@@ -1,0 +1,13 @@
+{
+  "name": "Todo (Vite + React)",
+  "description": "A working React todo app with TypeScript and Vite, ready for AI-driven development",
+  "stack": {
+    "framework": "React 19",
+    "language": "TypeScript",
+    "bundler": "Vite",
+    "state": "React hooks (useState, useReducer)",
+    "storage": "localStorage"
+  },
+  "postInstall": "npm install",
+  "firstTask": "docs/tasks/todo-0001-add-todo-input.md"
+}

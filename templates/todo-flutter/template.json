@@ -1,0 +1,13 @@
+{
+  "name": "Todo (Flutter)",
+  "description": "Flutter todo app with Riverpod, Hive, and go_router — placeholder for you to build",
+  "stack": {
+    "framework": "Flutter (stable)",
+    "language": "Dart 3+",
+    "state": "flutter_riverpod",
+    "storage": "hive_flutter",
+    "routing": "go_router"
+  },
+  "postInstall": "flutter pub get",
+  "firstTask": "docs/tasks/todo-0001-add-todo-input.md"
+}

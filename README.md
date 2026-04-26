@@ -1,82 +1,325 @@
-# Todo
+# Agent Kanban
 
-A simple, local-first todo list app built with Flutter. Cross-platform (iOS, Android, desktop, web).
+A platform for **AI-agent-driven development workflows**. Provides a CLI to scaffold projects, an MCP server for agent integration, a VS Code Kanban board, and starter templates with built-in task management.
 
-> Learning project — built collaboratively with AI coding agents. See [`AGENTS.md`](AGENTS.md) for the agent playbook.
+> Built as a learning project — prefer **clarity over cleverness**.
 
-## Stack
+## What's Inside
 
-| | |
-|---|---|
-| Framework | Flutter (stable) |
-| Language | Dart 3+ |
-| State | flutter_riverpod |
-| Storage | hive_flutter |
-| Routing | go_router |
-| UI | Material 3 |
+```
+packages/
+├── core/              Shared markdown parser, writer, scanner
+├── cli/               create-kanban-app — scaffold projects from templates
+├── mcp-server/        MCP server for AI agents to manage tasks/PRDs/ADRs
+└── vscode-extension/  Kanban board for VS Code (sidebar + status bar)
+
+templates/
+├── shared/            Common .agents/ + docs/ structure (all templates get this)
+├── todo-vite-react/   Working React + Vite todo app
+├── todo-flutter/      Flutter placeholder (you build it)
+└── blank/             Docs-only scaffold
+```
+
+---
 
 ## Quick Start
 
+### 1. Scaffold a New Project
+
 ```bash
-# Install Flutter SDK first: https://docs.flutter.dev/get-started/install
-
-git clone <repo-url>
-cd todo
-flutter pub get
-flutter run
+npx create-kanban-app my-project --template todo-vite-react
+cd my-project
+npm install
+npm run dev
 ```
 
-## Common Commands
+### 2. Available Templates
 
-| Task | Command |
-|---|---|
-| Run app | `flutter run` |
-| Run tests | `flutter test` |
-| Analyze | `flutter analyze` |
-| Format | `dart format .` |
-| Build APK | `flutter build apk --release` |
-| Codegen (Hive adapters) | `dart run build_runner build -d` |
+| Template           | Description                                        |
+| ------------------ | -------------------------------------------------- |
+| `todo-vite-react`  | Working React todo app with Vite + TypeScript       |
+| `todo-flutter`     | Flutter placeholder with agent skills               |
+| `blank`            | Minimal docs/ + .agents/ structure only             |
 
-## Project Structure
-
-```
-lib/
-├── main.dart            # entry, ProviderScope, theme
-├── app.dart             # MaterialApp.router
-├── core/                # theme, router
-├── features/todos/      # the one feature for now
-│   ├── data/            # Hive repository
-│   ├── domain/          # Todo entity
-│   └── presentation/    # screens, widgets, providers
-└── shared/              # cross-feature widgets
-
-test/                    # mirrors lib/
-docs/                    # PRDs, tasks, ADRs
-.agents/                 # AI agent playbook
+```bash
+npx create-kanban-app --list     # see all templates
+npx create-kanban-app doctor     # validate your project structure
 ```
 
-## Development Loop
+---
 
-1. **Idea** → write a PRD in `docs/prd/` ([template](.agents/templates/prd.md))
-2. **PRD** → break into tasks in `docs/tasks/` ([template](.agents/templates/task.md))
-3. **Task** → hand to an agent (or yourself) — code + tests
-4. **Decision** → log non-trivial choices as ADRs in `docs/decisions/` ([template](.agents/templates/adr.md))
+## MCP Server Setup
+
+The MCP server lets **any AI agent** manage your Kanban board programmatically — create tasks, move cards, read PRDs, etc.
+
+### Available MCP Tools
+
+| Tool           | Description                                    |
+| -------------- | ---------------------------------------------- |
+| `board_list`   | Show full Kanban board (TODO/WIP/DONE/BLOCKED) |
+| `task_create`  | Create a new task from template                |
+| `task_move`    | Move task between columns (renames file)       |
+| `task_read`    | Read parsed task content                       |
+| `task_update`  | Tick checkboxes or add notes                   |
+| `prd_create`   | Create a new PRD                               |
+| `prd_list`     | List all PRDs                                  |
+| `adr_create`   | Create a new ADR                               |
+| `next_id`      | Get next sequential ID                         |
+
+### Available MCP Resources
+
+| Resource URI       | Description                               |
+| ------------------ | ----------------------------------------- |
+| `kanban://board`   | Full board state as structured JSON       |
+| `kanban://tasks`   | All tasks as a flat list                  |
+| `kanban://prds`    | All product requirement documents         |
+| `kanban://adrs`    | All architecture decision records         |
+
+### Setup for Cursor
+
+Create `.cursor/mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "kanban": {
+      "command": "node",
+      "args": ["/absolute/path/to/agent-kanban/packages/mcp-server/dist/index.js"],
+      "cwd": "."
+    }
+  }
+}
+```
+
+Or in your global Cursor settings (`~/.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "kanban": {
+      "command": "node",
+      "args": ["/absolute/path/to/agent-kanban/packages/mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+### Setup for Claude Code / Anthropic
+
+Add to your project's `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "kanban": {
+      "command": "node",
+      "args": ["/absolute/path/to/agent-kanban/packages/mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+Or add it via the CLI:
+
+```bash
+claude mcp add kanban node /absolute/path/to/agent-kanban/packages/mcp-server/dist/index.js
+```
+
+### Setup for Gemini CLI
+
+Add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "kanban": {
+      "command": "node",
+      "args": ["/absolute/path/to/agent-kanban/packages/mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+### Setup for VS Code Copilot (GitHub Copilot)
+
+Add to `.vscode/mcp.json` in your project:
+
+```json
+{
+  "servers": {
+    "kanban": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/absolute/path/to/agent-kanban/packages/mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+### Setup for Windsurf / Codeium
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "kanban": {
+      "command": "node",
+      "args": ["/absolute/path/to/agent-kanban/packages/mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+### Setup for Antigravity
+
+Add to your workspace or global MCP settings:
+
+```json
+{
+  "mcpServers": {
+    "kanban": {
+      "command": "node",
+      "args": ["/absolute/path/to/agent-kanban/packages/mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+### Windows Users
+
+On Windows, replace paths with backslashes or use forward slashes:
+
+```json
+{
+  "mcpServers": {
+    "kanban": {
+      "command": "node",
+      "args": ["C:/Users/you/agent-kanban/packages/mcp-server/dist/index.js"]
+    }
+  }
+}
+```
+
+> **Tip**: After adding the config, restart your AI tool. Then ask your agent: *"Use the board_list tool to show me my Kanban board."*
+
+---
+
+## VS Code Extension
+
+The extension provides a **Kanban board sidebar** that auto-syncs with your `docs/tasks/` directory.
+
+### Features
+
+- **Kanban Board** — 4 columns: TODO, WIP, DONE, BLOCKED
+- **Drag & Drop** — Drag cards between columns (renames files automatically)
+- **Click to Open** — Click any card to open the task markdown in the editor
+- **Move Buttons** — Hover a card to see quick-move buttons
+- **Progress Bars** — Shows acceptance criteria completion per task
+- **Status Bar** — Live count of tasks by status
+- **File Watcher** — Board updates automatically when files change
+- **Create Commands** — `Agent Kanban: New Task` and `Agent Kanban: New PRD` commands
+- **Auto-activation** — Only activates in workspaces with `docs/tasks/` directory
+
+### Install (Development)
+
+```bash
+# From the monorepo root
+cd packages/vscode-extension
+pnpm build
+
+# Install the extension in VS Code
+# Option 1: Use the --extensionDevelopmentPath flag
+code --extensionDevelopmentPath=./packages/vscode-extension
+
+# Option 2: Create a .vsix package
+cd packages/vscode-extension
+npx @vscode/vsce package --no-dependencies
+code --install-extension agent-kanban-vscode-0.1.0.vsix
+```
+
+### How It Works with MCP
+
+The VS Code extension and MCP server share the same source of truth — **your markdown files**:
+
+```
+┌──────────────────┐     ┌──────────────────┐
+│  VS Code Ext     │     │   AI Agent       │
+│  (Kanban Board)  │     │  (via MCP)       │
+└────────┬─────────┘     └────────┬─────────┘
+         │                        │
+         │  reads/writes          │  reads/writes
+         │                        │
+         ▼                        ▼
+┌──────────────────────────────────────────────┐
+│          docs/tasks/*.md                      │
+│          docs/prd/*.md                        │
+│          docs/decisions/*.md                  │
+│          (File System = Source of Truth)       │
+└──────────────────────────────────────────────┘
+```
+
+- **You** drag a card in the Kanban board → file gets renamed
+- **Agent** calls `task_move` via MCP → file gets renamed
+- **File watcher** detects the change → board updates in real-time
+
+Both humans and agents work on the same files. No sync needed.
+
+---
+
+## Development (this repo)
+
+```bash
+pnpm install      # install all workspace deps
+pnpm build        # build all packages
+pnpm test         # run all tests
+```
+
+### Package Overview
+
+| Package                  | Description                           | Build    |
+| ------------------------ | ------------------------------------- | -------- |
+| `@agent-kanban/core`     | Markdown parser, writer, scanner      | `tsc`    |
+| `create-kanban-app`      | CLI for scaffolding projects          | `tsc`    |
+| `@agent-kanban/mcp-server` | MCP server (stdio)                  | `tsc`    |
+| `agent-kanban-vscode`    | VS Code extension                     | esbuild  |
+
+### Workflow
+
+1. **Idea** → write a PRD in `docs/prd/`
+2. **PRD** → break into tasks in `docs/tasks/`
+3. **Task** → hand to an agent or code it yourself
+4. **Decision** → log non-trivial choices as ADRs in `docs/decisions/`
 5. **Done** → rename `wip-NNNN-...md` to `done-NNNN-...md`
 
-Full process: [`.agents/workflows/feature-loop.md`](.agents/workflows/feature-loop.md).
+### Task File Naming
 
-## Working with AI Agents
+```
+docs/tasks/{prefix}-{NNNN}-{slug}.md
+```
 
-Drop this repo into Claude Code, Cursor, Aider, or any agent that reads `AGENTS.md`. The agent gets:
+| Prefix     | Meaning            |
+| ---------- | ------------------ |
+| `todo-`    | Not started        |
+| `wip-`     | In progress        |
+| `done-`    | Completed          |
+| `blocked-` | Blocked            |
 
-- Stack + conventions ([`AGENTS.md`](AGENTS.md))
-- Patterns for widgets, state, tests, theming, storage ([`.agents/skills/`](.agents/skills/))
-- Templates for PRDs, tasks, ADRs ([`.agents/templates/`](.agents/templates/))
-- Worked examples ([`docs/`](docs/))
+**Status is the filename prefix. Rename the file to change status.**
 
-## Status
+---
 
-Early development. See [`docs/tasks/`](docs/tasks/) for current work.
+## Roadmap
+
+- [x] `@agent-kanban/core` — parser, writer, scanner
+- [x] `create-kanban-app` CLI — scaffold projects
+- [x] MCP server — 9 tools, 4 resources
+- [x] VS Code extension — Kanban board, drag & drop, status bar
+- [ ] Publish `create-kanban-app` to npm
+- [ ] Publish VS Code extension to marketplace
+- [ ] Add tests for core parser/writer
+- [ ] Chat tabs per task in VS Code
+- [ ] Template contributions (Next.js, Python, Go, etc.)
 
 ## License
 

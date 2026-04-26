@@ -1,0 +1,76 @@
+{
+  "name": "agent-kanban-vscode",
+  "displayName": "Agent Kanban",
+  "description": "Trello-like Kanban board for markdown-based task management — works with AI agents via MCP",
+  "version": "0.1.0",
+  "publisher": "agent-kanban",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "workspaceContains:docs/tasks"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "agentKanban.openBoard",
+        "title": "Open Kanban Board",
+        "category": "Agent Kanban"
+      },
+      {
+        "command": "agentKanban.refreshBoard",
+        "title": "Refresh Board",
+        "category": "Agent Kanban"
+      },
+      {
+        "command": "agentKanban.createTask",
+        "title": "New Task",
+        "category": "Agent Kanban"
+      },
+      {
+        "command": "agentKanban.createPrd",
+        "title": "New PRD",
+        "category": "Agent Kanban"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "agent-kanban",
+          "title": "Agent Kanban",
+          "icon": "$(checklist)"
+        }
+      ]
+    },
+    "views": {
+      "agent-kanban": [
+        {
+          "type": "webview",
+          "id": "agentKanban.boardView",
+          "name": "Board"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch",
+    "clean": "rimraf dist *.tsbuildinfo",
+    "typecheck": "tsc --noEmit",
+    "package": "vsce package --no-dependencies",
+    "test": "echo 'no tests yet'",
+    "lint": "echo 'no lint yet'"
+  },
+  "dependencies": {
+    "@agent-kanban/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.100.0",
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.27.0",
+    "typescript": "^5.7.0",
+    "rimraf": "^6.0.0"
+  }
+}

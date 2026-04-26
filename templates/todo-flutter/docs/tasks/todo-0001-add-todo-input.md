@@ -1,7 +1,7 @@
 # Task 0001: Add Todo Input
 
 > PRD: `docs/prd/0001-add-todo.md`
-> Created: 2026-04-26
+> Created: 2026-01-01
 
 ## Goal
 
@@ -10,9 +10,9 @@ Implement the input UI and `add` method so users can create todos that persist.
 ## Acceptance Criteria
 
 - [ ] `TodoInput` widget exists at `lib/features/todos/presentation/widgets/todo_input.dart`
-- [ ] Input is rendered on `TodosScreen` at the bottom
+- [ ] Input is rendered on `TodosScreen`
 - [ ] `TodosNotifier.add(String title)` is implemented and persists to Hive
-- [ ] Empty/whitespace title → no-op (early return after `.trim()`)
+- [ ] Empty/whitespace title → no-op
 - [ ] Input clears + refocuses after successful add
 - [ ] List scrolls to show the new item
 - [ ] Test: `todos_notifier_test.dart` covers add happy path + empty rejection
@@ -24,7 +24,7 @@ Implement the input UI and `add` method so users can create todos that persist.
 
 - `lib/features/todos/presentation/widgets/todo_input.dart` — new
 - `lib/features/todos/presentation/screens/todos_screen.dart` — edit
-- `lib/features/todos/presentation/providers/todos_provider.dart` — edit (add method)
+- `lib/features/todos/presentation/providers/todos_provider.dart` — edit
 - `test/features/todos/presentation/providers/todos_notifier_test.dart` — new
 - `test/features/todos/presentation/widgets/todo_input_test.dart` — new
 
@@ -37,7 +37,7 @@ Implement the input UI and `add` method so users can create todos that persist.
 
 ## Open Questions
 
-(none — resolved during PRD review)
+(none)
 
 ## Notes
 

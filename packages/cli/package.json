@@ -1,0 +1,30 @@
+{
+  "name": "create-kanban-app",
+  "version": "0.1.0",
+  "description": "Scaffold a new project with agent-driven Kanban workflow",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "create-kanban-app": "./dist/index.js"
+  },
+  "files": ["dist", "templates"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rimraf dist *.tsbuildinfo",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'no tests yet'",
+    "lint": "echo 'no lint yet'"
+  },
+  "dependencies": {
+    "@agent-kanban/core": "workspace:*",
+    "prompts": "^2.4.2",
+    "picocolors": "^1.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "rimraf": "^6.0.0",
+    "@types/node": "^22.0.0",
+    "@types/prompts": "^2.4.9"
+  }
+}

@@ -4,33 +4,34 @@ This is where the **why** of the project lives. Code is the *what* and *how*; th
 
 ## Layout
 
-| Folder | Contents | Template |
-|---|---|---|
-| `prd/` | What features do, who they're for | `.agents/templates/prd.md` |
-| `tasks/` | Scoped chunks of work to deliver a PRD | `.agents/templates/task.md` |
-| `decisions/` | Why we chose pattern/package X over Y | `.agents/templates/adr.md` |
+| Folder       | Contents                                   | Template                   |
+| ------------ | ------------------------------------------ | -------------------------- |
+| `prd/`       | What features do, who they're for          | `.agents/templates/prd.md` |
+| `tasks/`     | Scoped chunks of work to deliver a PRD     | `.agents/templates/task.md`|
+| `decisions/` | Why we chose pattern/package X over Y      | `.agents/templates/adr.md` |
 
 ## Naming
 
 All files use **zero-padded sequential numbers**:
 
-- `prd/0001-add-todo.md`
-- `tasks/todo-0001-add-todo-input.md`
-- `decisions/0001-use-riverpod.md`
+- `prd/0002-kanban-mcp-vscode.md`
+- `tasks/done-0000-init-monorepo.md`
+- `decisions/0001-pnpm-monorepo.md`
 
-Numbers never get reused. If a doc is abandoned, leave the file rather than deleting it.
+Numbers never get reused. If a doc is abandoned, leave the file.
 
 ## Task Status (Filename Prefix)
 
-| Prefix | Meaning |
-|---|---|
-| `todo-` | Not started |
-| `wip-` | In progress |
-| `done-` | Completed |
+| Prefix     | Meaning            |
+| ---------- | ------------------ |
+| `todo-`    | Not started        |
+| `wip-`     | In progress        |
+| `done-`    | Completed          |
 | `blocked-` | Blocked — see Notes |
 
-## Quick Index
+## Current State
 
-See the per-folder README files (or just `ls`) for what's in flight.
-
-A worked example feature lives in here: PRD-0001, Task-0001, ADR-0001 all describe the basic "add a todo" feature. Read those three together to see the loop end-to-end.
+- **PRD-0002**: Agent Kanban Platform (monorepo + MCP + CLI + VS Code) — in progress
+- **ADR-0001**: pnpm monorepo with TypeScript — accepted
+- **ADR-0002**: MCP for agent integration — accepted
+- **Task-0000**: Init monorepo — done

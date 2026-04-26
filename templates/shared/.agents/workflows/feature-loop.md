@@ -61,9 +61,9 @@ The process for turning an idea into shipped code with an AI agent.
 **Order inside a task:**
 1. Read the PRD and the task file
 2. Read any relevant skill files in `.agents/skills/`
-3. Write the test first when the change is logic-heavy
+3. Write the test first when the change is logic-heavy; write the UI first when it's UI-heavy
 4. Implement
-5. Run `pnpm build` and `pnpm test`
+5. Run lint/analyze and tests (see AGENTS.md for project-specific commands)
 6. Update the task's "Notes" section with anything surprising
 
 **If you hit a real decision** (which package, which pattern, breaking schema change), pause and write an ADR before continuing.
@@ -74,10 +74,10 @@ Self-check before declaring done:
 
 | Check | How |
 |---|---|
-| Compiles | `pnpm build` clean |
-| Tested | `pnpm test` passes; new behavior has a test |
-| No lint warnings | No TypeScript errors |
-| Conventions followed | kebab-case files, JSDoc, no `any` |
+| Compiles | Build completes with no errors |
+| Tested | Tests pass; new behavior has a test |
+| No lint warnings | Lint/analyze output clean |
+| Conventions followed | See AGENTS.md coding conventions |
 | Task acceptance met | Re-read the task's acceptance list |
 | Decisions logged | ADR exists if anything non-obvious was chosen |
 

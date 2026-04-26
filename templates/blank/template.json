@@ -1,0 +1,9 @@
+{
+  "name": "Blank (Docs Only)",
+  "description": "Minimal scaffold with just the docs/ and .agents/ workflow structure",
+  "stack": {
+    "framework": "None",
+    "language": "Any"
+  },
+  "firstTask": "Start by writing a PRD in docs/prd/"
+}

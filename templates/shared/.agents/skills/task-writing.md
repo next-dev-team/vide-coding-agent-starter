@@ -22,7 +22,7 @@ A task must fit **one focused agent session** (roughly 30–60 minutes of work).
 | -------------------- | ----------------------------- |
 | Files touched        | ≤ 5                           |
 | New + changed lines  | ≤ 300                         |
-| Public API additions | ≤ 1 new module/export          |
+| Public API additions | ≤ 1 new module/component     |
 | New packages added   | 0 (needs ADR + user approval) |
 
 **If you exceed any of these, split.** It's better to write 3 small tasks than 1 vague one.
@@ -61,7 +61,7 @@ Every task file has exactly these sections, in this order:
 | ✅ Good                                                             | ❌ Bad                                                 |
 | ------------------------------------------------------------------- | ------------------------------------------------------ |
 | "Add an input field on the todos screen so users can create todos." | "Working on the todo input feature and related stuff." |
-| "Add scanAdrs function to scanner so ADRs are searchable."          | "ADR stuff."                                           |
+| "Persist todos to local storage so they survive a page reload."     | "Storage layer."                                       |
 | "Reject empty submissions in the add-todo flow."                    | "Fix some validation bugs."                            |
 
 If you can't state the goal in one sentence, the task is two tasks.
@@ -74,18 +74,18 @@ Format: checkbox list. Use `[ ]` initially; tick to `[x]` as you complete during
 
 | ✅ Testable                                 | ❌ Not testable        |
 | ------------------------------------------- | ---------------------- |
-| `[ ] scanAdrs returns parsed Adr[]`         | `[ ] ADR works`        |
-| `[ ] Empty dir returns []`                  | `[ ] Handles edge case`|
-| `[ ] pnpm build completes with 0 errors`    | `[ ] Code is clean`    |
-| `[ ] Unit test covers add() happy path`     | `[ ] Has tests`        |
-| `[ ] List scrolls to newest item after add` | `[ ] UX is smooth`     |
+| `[ ] Input field renders on the todos screen`   | `[ ] Input looks good` |
+| `[ ] Submitting empty title is a no-op`         | `[ ] Validation works` |
+| `[ ] Build completes with 0 warnings`           | `[ ] Code is clean`    |
+| `[ ] Unit test covers add() happy path`         | `[ ] Has tests`        |
+| `[ ] List scrolls to newest item after add`     | `[ ] UX is smooth`     |
 
 **Always include these three structural criteria** at the bottom:
 
 ```
-[ ] All tests pass (`pnpm test`)
-[ ] Build clean (`pnpm build`)
-[ ] Public APIs have JSDoc (`/** ... */`)
+[ ] All tests pass (see AGENTS.md for command)
+[ ] Build clean — no warnings or errors
+[ ] Public APIs are documented
 ```
 
 **Tie back to the PRD.** If your task implements PRD-0001's criteria #2 and #4, say so:
@@ -108,9 +108,9 @@ Best-effort list with one of three markers:
 Example:
 
 ```
-- packages/core/src/scanner.ts — edit
-- packages/core/src/index.ts — edit (add export)
-- packages/core/src/__tests__/scanner.test.ts — new
+- src/components/TodoInput.tsx — new
+- src/components/TodoList.tsx — edit
+- src/__tests__/TodoInput.test.tsx — new
 ```
 
 It's OK to be wrong. Update during implementation. The point is to **force you to think about scope** before starting. If your list is >5 entries, the task is too big.
@@ -129,10 +129,10 @@ It's OK to be wrong. Update during implementation. The point is to **force you t
 Example:
 
 ```
-- Add scanAdrs() following the same pattern as scanTasks() and scanPrds()
-- Reuse listMdFiles() and parseAdr() from existing modules
-- Add barrel export in index.ts
-- Write test using vitest with a temp directory fixture
+- Create TodoInput component with controlled text field
+- On submit: trim, early return if empty, call addTodo()
+- Scroll to bottom after successful add
+- Follow existing component patterns in the project
 ```
 
 If you can't fit it in 5 bullets, **the task is two tasks.**
@@ -169,7 +169,7 @@ Capture anything that:
 
 | ✅ Worth a note                                                            | ❌ Not worth a note       |
 | -------------------------------------------------------------------------- | ------------------------- |
-| "parseAdr needs to handle missing Context section — return empty string"   | "Implemented add method"  |
+| "localStorage setItem is synchronous — no need for async wrapper"  | "Implemented add method"  |
 | "ScrollController.animateTo > ensureVisible because we always want bottom" | "Used a ScrollController" |
 | "Decided NOT to write an ADR — trade-off is too small"                     | "No ADR"                  |
 
@@ -229,41 +229,41 @@ Problems: vague goal, untestable acceptance, no file list, no PRD link, no appro
 ### ✅ Good task
 
 ```markdown
-# Task 0003: Add ADR Scanner
+# Task 0001: Add Todo Input
 
-> PRD: docs/prd/0002-kanban-mcp-vscode.md
+> PRD: docs/prd/0001-add-todo.md
 > Created: 2026-04-26
 
 ## Goal
 
-Add scanAdrs() to @agent-kanban/core so the MCP server can list ADRs.
+Add an input field on the todos screen so users can create todos that persist.
 
 ## Acceptance Criteria
 
-- [ ] scanAdrs(projectPath) returns Adr[] sorted by ID
-- [ ] Handles missing docs/decisions/ directory gracefully (returns [])
-- [ ] Skips README.md and unparseable files
-- [ ] Exported from core barrel (index.ts)
-- [ ] MCP resource `kanban://adrs` uses scanAdrs
-- [ ] Unit test: happy path with 2 ADR files
-- [ ] Unit test: empty directory returns []
-- [ ] All tests pass (`pnpm test`)
-- [ ] Build clean (`pnpm build`)
-- [ ] Public APIs have JSDoc
+- [ ] Input field + Add button visible on the todos screen
+- [ ] Submitting non-empty title appends a todo (PRD-0001 AC #1)
+- [ ] Todo persists across restart (PRD-0001 AC #2)
+- [ ] Empty/whitespace title is a no-op (PRD-0001 AC #3)
+- [ ] Input clears after successful add
+- [ ] List scrolls to newest entry
+- [ ] Unit test: add — happy path + empty rejection
+- [ ] All tests pass (see AGENTS.md)
+- [ ] Build clean
+- [ ] Public APIs documented
 
 ## Files Likely Affected
 
-- packages/core/src/scanner.ts — edit (add scanAdrs)
-- packages/core/src/index.ts — edit (add export)
-- packages/mcp-server/src/resources/index.ts — edit
-- packages/core/src/__tests__/scanner.test.ts — new
+- src/components/TodoInput.tsx — new
+- src/components/TodoList.tsx — edit
+- src/hooks/useTodos.ts — edit (add method)
+- src/__tests__/TodoInput.test.tsx — new
 
 ## Approach
 
-- Follow the same pattern as scanTasks() and scanPrds()
-- Reuse listMdFiles() and parseAdr() already in the codebase
-- Add barrel export in index.ts
-- Write vitest test with a temp directory fixture
+- Create TodoInput component with controlled text field
+- On submit: trim, early-return if empty, call addTodo(), clear input
+- Scroll to bottom after add
+- Follow existing component patterns
 
 ## Open Questions
 
@@ -276,7 +276,7 @@ Add scanAdrs() to @agent-kanban/core so the MCP server can list ADRs.
 ## When Done
 
 - [ ] Rename file from `wip-` to `done-`
-- [ ] Tick PRD-0002 acceptance criteria for ADR support
+- [ ] Tick PRD AC #1, #2, #3
 - [ ] No ADR needed (no novel decision)
 ```
 

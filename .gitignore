@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Kanban chat history
+.kanban/
+
+# Logs
+*.log
+packages/vscode-extension/agent-kanban-vscode-0.1.0.vsix

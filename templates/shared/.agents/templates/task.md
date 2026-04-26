@@ -13,14 +13,14 @@ One sentence describing what this task achieves.
 
 - [ ] Criterion 1 (testable)
 - [ ] Criterion 2
-- [ ] All tests pass (`pnpm test`)
-- [ ] Build clean (`pnpm build`)
+- [ ] All tests pass (see AGENTS.md for command)
+- [ ] Build clean — no warnings or errors
 
 ## Files Likely Affected
 
-- `packages/core/src/foo.ts` — new
-- `packages/core/src/bar.ts` — edit
-- `packages/core/src/__tests__/foo.test.ts` — new
+- `src/components/Foo.tsx` — new
+- `src/components/Bar.tsx` — edit
+- `src/__tests__/Foo.test.tsx` — new
 
 ## Approach
 

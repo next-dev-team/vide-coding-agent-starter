@@ -1,8 +1,8 @@
 # PRD-0001: Add a Todo
 
-> Status: approved
-> Owner: zila
-> Created: 2026-04-26
+> Status: draft
+> Owner: (you)
+> Created: 2026-01-01
 
 ## Problem
 
@@ -23,29 +23,26 @@ Every user, every session — this is the most fundamental interaction.
 - [ ] A `TextField` and "Add" button are visible on the todos screen
 - [ ] Submitting a non-empty title appends a todo to the list
 - [ ] The new todo persists across app restarts (Hive)
-- [ ] Submitting an empty or whitespace-only title is a no-op (no todo added, no error toast)
+- [ ] Submitting an empty or whitespace-only title is a no-op
 - [ ] After a successful add, the input clears and refocuses
 - [ ] The todo list scrolls so the newest entry is visible
-- [ ] Unit tests cover the notifier's `add` method (happy path + empty rejection)
+- [ ] Unit tests cover the notifier's `add` method
 - [ ] Widget test verifies the input → tap → list update flow
 
 ## Out of Scope
 
-- Editing an existing todo (separate PRD)
+- Editing an existing todo
 - Due dates, priority, tags
 - Multi-line input
 - Voice input
-- Character limits
 
 ## Open Questions
 
-- Q1: Should we show a snackbar confirming the add? **Resolved:** No — the visible list update is enough feedback.
-- Q2: Should the input be at the top or bottom of the screen? **Resolved:** Bottom, with FAB-style affordance.
+- (none — this is intentionally simple)
 
 ## References
 
 - Tasks: `docs/tasks/todo-0001-add-todo-input.md`
-- ADRs: `docs/decisions/0001-use-riverpod.md`
 
 ---
 

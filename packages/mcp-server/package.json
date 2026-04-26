@@ -1,0 +1,29 @@
+{
+  "name": "@agent-kanban/mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server for managing markdown-based Kanban workflows",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "kanban-mcp": "./dist/index.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rimraf dist *.tsbuildinfo",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'no tests yet'",
+    "lint": "echo 'no lint yet'"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@agent-kanban/core": "workspace:*",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "rimraf": "^6.0.0",
+    "@types/node": "^22.0.0"
+  }
+}
