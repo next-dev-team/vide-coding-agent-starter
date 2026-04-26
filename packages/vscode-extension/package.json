@@ -7,7 +7,9 @@
   "engines": {
     "vscode": "^1.100.0"
   },
-  "categories": ["Other"],
+  "categories": [
+    "Other"
+  ],
   "activationEvents": [
     "workspaceContains:docs/tasks"
   ],
@@ -67,6 +69,7 @@
     "@agent-kanban/core": "workspace:*"
   },
   "devDependencies": {
+    "@vscode/vsce": "^3.9.1",
     "@types/vscode": "^1.100.0",
     "@types/node": "^22.0.0",
     "esbuild": "^0.27.0",

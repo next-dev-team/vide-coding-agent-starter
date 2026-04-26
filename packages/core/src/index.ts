@@ -51,3 +51,29 @@ export {
   nextId,
   moveTask,
 } from "./scanner.js";
+
+// ─── Memory Engine ─────────────────────────────────────────────
+export type {
+  MemoryCategory,
+  Memory,
+  MemoryCandidate,
+  DedupDecision,
+  DedupResult,
+  SessionEntry,
+  DedupeReport,
+} from "./memory/index.js";
+
+export type { IMemoryBackend, MemoryConfig, MemoryBackendId } from "./memory/index.js";
+
+export {
+  MEMORY_CATEGORIES,
+  extractMemories,
+  similarity,
+  deduplicateMemories,
+  sweepDuplicates,
+  MemoryStore,
+  loadMemoryConfig,
+  saveMemoryConfig,
+  MemoryFileBackend,
+  createMemoryBackend,
+} from "./memory/index.js";

@@ -11,7 +11,9 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -22,9 +24,13 @@
     "lint": "echo 'no lint configured yet'"
   },
   "devDependencies": {
-    "typescript": "^5.7.0",
-    "vitest": "^3.1.0",
+    "@types/node": "^22.0.0",
     "rimraf": "^6.0.0",
-    "@types/node": "^22.0.0"
+    "typescript": "^5.7.0",
+    "vitest": "^3.1.0"
+  },
+  "dependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "^12.9.0"
   }
 }

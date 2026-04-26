@@ -19,6 +19,17 @@ import {
 import type { TaskStatus, DocType } from "@agent-kanban/core";
 import { readFile, readdir } from "node:fs/promises";
 
+// ─── Memory tools ─────────────────────────────────────────────
+import { compoundLearningsTool, handleCompoundLearnings } from "./compound-learnings.js";
+import {
+  memoryFindTool, handleMemoryFind,
+  memoryOverviewTool, handleMemoryOverview,
+  memoryReadTool, handleMemoryRead,
+} from "./memory-tools.js";
+import { memoryDedupeTool, handleMemoryDedupe } from "./memory-dedupe.js";
+import { memorySessionTool, handleMemorySession } from "./memory-session.js";
+import { memoryConfigSetTool, handleMemoryConfigSet } from "./memory-config.js";
+
 /** Resolve project path — defaults to cwd. */
 function resolveProjectPath(args: Record<string, unknown>): string {
   return (args.project_path as string) || process.cwd();
@@ -171,6 +182,14 @@ export function registerTools() {
         required: ["doc_type"],
       },
     },
+    // ─── Memory tools ───────────────────────────────────────
+    compoundLearningsTool,
+    memoryFindTool,
+    memoryOverviewTool,
+    memoryReadTool,
+    memoryDedupeTool,
+    memorySessionTool,
+    memoryConfigSetTool,
   ];
 }
 
@@ -324,6 +343,42 @@ export async function handleToolCall(
       case "next_id": {
         const id = await nextId(projectPath, args.doc_type as DocType);
         result = { next_id: id, doc_type: args.doc_type };
+        break;
+      }
+
+      // ─── Memory tools ─────────────────────────────────────
+      case "compound_learnings": {
+        result = await handleCompoundLearnings(args);
+        break;
+      }
+
+      case "memory_find": {
+        result = await handleMemoryFind(args);
+        break;
+      }
+
+      case "memory_overview": {
+        result = await handleMemoryOverview(args);
+        break;
+      }
+
+      case "memory_read": {
+        result = await handleMemoryRead(args);
+        break;
+      }
+
+      case "memory_dedupe": {
+        result = await handleMemoryDedupe(args);
+        break;
+      }
+
+      case "memory_session": {
+        result = handleMemorySession(args);
+        break;
+      }
+
+      case "memory_config_set": {
+        result = handleMemoryConfigSet(args);
         break;
       }
 

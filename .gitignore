@@ -23,3 +23,8 @@ Thumbs.db
 # Logs
 *.log
 packages/vscode-extension/agent-kanban-vscode-0.1.0.vsix
+
+# Agent Kanban runtime (DB + config — gitignored; docs/memory/*.md committed)
+.agent-kanban/
+# Protect any stray .db files that land in docs/
+docs/memory/*.db

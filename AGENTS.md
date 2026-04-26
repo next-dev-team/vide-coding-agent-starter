@@ -155,3 +155,40 @@ A task is done when:
 5. Public APIs have a one-line JSDoc (`/** ... */`)
 6. Task file renamed to `done-*.md`
 7. Any non-obvious decision logged as an ADR
+
+## Memory Tools
+
+Before loading any skill file, call `memory_overview` or `memory_find` first to check whether the project already has relevant knowledge stored:
+
+```
+# Quick warm-up (L0 abstracts only — cheap)
+memory_overview
+
+# Targeted search
+memory_find { query: "pnpm workspaces" }
+```
+
+Only call `memory_read` when you need the full L2 content for a specific memory entry — it is the only tool that returns raw detail.
+
+After completing a task, run `compound_learnings` with the task ID to extract reusable memories and persist them via `memory_overview` / the storage backend.
+
+## Choosing a Memory Backend
+
+The memory engine supports two backends, switchable via the `memory_config_set` MCP tool:
+
+| Backend | Config value | Storage | Best for |
+|---------|-------------|---------|---------|
+| SQLite (default) | `"sqlite"` | `.agent-kanban/memory.db` | Fast FTS5 search, large stores, CI/CD |
+| File mode | `"files"` | `docs/memory/<category>/<slug>.md` | Human-readable, git-committable, team sharing |
+
+**SQLite** is the default and requires no configuration. The `.agent-kanban/` directory is gitignored.
+
+**File mode** stores every memory as a standalone Markdown file with YAML frontmatter. Files under `docs/memory/` can be committed and reviewed in PRs. No `better-sqlite3` native addon required for read/write operations.
+
+Switch with:
+```
+memory_config_set { backend: "files" }   # or "sqlite"
+```
+
+The change is persisted in `.agent-kanban/config.json` and takes effect on the next memory tool call.
+

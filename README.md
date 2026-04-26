@@ -211,8 +211,7 @@ The extension provides a **Kanban board sidebar** that auto-syncs with your `doc
 
 ### Features
 
-- **Kanban Board** — 4 columns: TODO, WIP, DONE, BLOCKED
-- **Drag & Drop** — Drag cards between columns (renames files automatically)
+- **Kanban Board** — Tabbed interface for TODO, WIP, BLOCKED, DONE
 - **Click to Open** — Click any card to open the task markdown in the editor
 - **Move Buttons** — Hover a card to see quick-move buttons
 - **Progress Bars** — Shows acceptance criteria completion per task
@@ -223,16 +222,18 @@ The extension provides a **Kanban board sidebar** that auto-syncs with your `doc
 
 ### Install (Development)
 
+There are a few ways to test the extension locally:
+
+**1. Debug via VS Code (Recommended)**
+Open the monorepo root in VS Code and press **F5** (or use the "Run and Debug" view). It will launch a new Extension Development Host window. Be sure to run `pnpm --filter agent-kanban-vscode dev` in the background to recompile your changes automatically.
+
+**2. CLI Launch**
 ```bash
-# From the monorepo root
-cd packages/vscode-extension
-pnpm build
-
-# Install the extension in VS Code
-# Option 1: Use the --extensionDevelopmentPath flag
 code --extensionDevelopmentPath=./packages/vscode-extension
+```
 
-# Option 2: Create a .vsix package
+**3. Build a `.vsix` Package**
+```bash
 cd packages/vscode-extension
 npx @vscode/vsce package --no-dependencies
 code --install-extension agent-kanban-vscode-0.1.0.vsix
@@ -259,7 +260,7 @@ The VS Code extension and MCP server share the same source of truth — **your m
 └──────────────────────────────────────────────┘
 ```
 
-- **You** drag a card in the Kanban board → file gets renamed
+- **You** click a move button in the Kanban board → file gets renamed
 - **Agent** calls `task_move` via MCP → file gets renamed
 - **File watcher** detects the change → board updates in real-time
 
@@ -314,7 +315,7 @@ docs/tasks/{prefix}-{NNNN}-{slug}.md
 - [x] `@agent-kanban/core` — parser, writer, scanner
 - [x] `create-kanban-app` CLI — scaffold projects
 - [x] MCP server — 9 tools, 4 resources
-- [x] VS Code extension — Kanban board, drag & drop, status bar
+- [x] VS Code extension — Kanban board, tabs, status bar
 - [ ] Publish `create-kanban-app` to npm
 - [ ] Publish VS Code extension to marketplace
 - [ ] Add tests for core parser/writer

@@ -1,4 +1,4 @@
-import { readdir, readFile, rename } from "node:fs/promises";
+import { readdir, readFile, rename, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { parseTask, parseTaskFilename, parsePrd, parseAdr } from "./parser.js";
 import type {
@@ -11,7 +11,7 @@ import type {
   DocType,
 } from "./types.js";
 
-// ─── Directory conventions ─────────────────────────────────────
+// ─── Directory helpers ─────────────────────────────────────────
 
 /** Resolve the docs subdirectory for a document type. */
 function docsDir(projectPath: string, docType: DocType): string {
@@ -25,9 +25,17 @@ function docsDir(projectPath: string, docType: DocType): string {
   }
 }
 
+/**
+ * The subdirectory where completed (done) task files are stored.
+ * Keeps the active board clean while preserving history in git.
+ */
+function doneDir(projectPath: string): string {
+  return join(projectPath, "docs", "tasks", "done");
+}
+
 // ─── List files ────────────────────────────────────────────────
 
-/** List all markdown files in a directory, ignoring README. */
+/** List all markdown files in a directory, ignoring README and subdirectories. */
 async function listMdFiles(dirPath: string): Promise<string[]> {
   try {
     const entries = await readdir(dirPath);
@@ -41,16 +49,35 @@ async function listMdFiles(dirPath: string): Promise<string[]> {
 
 // ─── Task Scanner ──────────────────────────────────────────────
 
-/** Scan docs/tasks/ and return all parsed tasks. */
+/**
+ * Scan docs/tasks/ (active: todo/wip/blocked) and docs/tasks/done/ (archived)
+ * and return all parsed tasks combined and sorted by ID.
+ */
 export async function scanTasks(projectPath: string): Promise<Task[]> {
-  const dir = docsDir(projectPath, "task");
-  const files = await listMdFiles(dir);
+  const activeDir = docsDir(projectPath, "task");
+  const finishedDir = doneDir(projectPath);
   const tasks: Task[] = [];
 
-  for (const file of files) {
-    if (!parseTaskFilename(file)) continue;
+  // Active tasks (todo / wip / blocked) — skip any stray done- files in root
+  const activeFiles = await listMdFiles(activeDir);
+  for (const file of activeFiles) {
+    const parsed = parseTaskFilename(file);
+    if (!parsed || parsed.status === "done") continue;
     try {
-      const content = await readFile(join(dir, file), "utf-8");
+      const content = await readFile(join(activeDir, file), "utf-8");
+      tasks.push(parseTask(file, content));
+    } catch {
+      // skip unparseable files
+    }
+  }
+
+  // Done tasks — always read from docs/tasks/done/
+  const doneFiles = await listMdFiles(finishedDir);
+  for (const file of doneFiles) {
+    const parsed = parseTaskFilename(file);
+    if (!parsed) continue;
+    try {
+      const content = await readFile(join(finishedDir, file), "utf-8");
       tasks.push(parseTask(file, content));
     } catch {
       // skip unparseable files
@@ -60,7 +87,7 @@ export async function scanTasks(projectPath: string): Promise<Task[]> {
   return tasks.sort((a, b) => a.id.localeCompare(b.id));
 }
 
-/** Build the full Kanban board from docs/tasks/. */
+/** Build the full Kanban board from docs/tasks/ and docs/tasks/done/. */
 export async function scanBoard(projectPath: string): Promise<Board> {
   const tasks = await scanTasks(projectPath);
 
@@ -120,7 +147,10 @@ export async function scanAdrs(projectPath: string): Promise<Adr[]> {
 
 // ─── Next ID ───────────────────────────────────────────────────
 
-/** Find the next available sequential ID for a document type. */
+/**
+ * Find the next available sequential ID for a document type.
+ * For tasks, scans both docs/tasks/ and docs/tasks/done/ to keep IDs globally unique.
+ */
 export async function nextId(
   projectPath: string,
   docType: DocType,
@@ -128,12 +158,17 @@ export async function nextId(
   const dir = docsDir(projectPath, docType);
   const files = await listMdFiles(dir);
 
+  // Include done/ for tasks so new IDs never collide with archived ones
+  const doneFiles =
+    docType === "task" ? await listMdFiles(doneDir(projectPath)) : [];
+  const allFiles = [...files, ...doneFiles];
+
   let maxNum = 0;
-  for (const file of files) {
-    // Extract leading digits from filenames (handles both task and prd/adr patterns)
-    const cleaned = docType === "task"
-      ? file.replace(/^(todo|wip|done|blocked)-/, "")
-      : file;
+  for (const file of allFiles) {
+    const cleaned =
+      docType === "task"
+        ? file.replace(/^(todo|wip|done|blocked)-/, "")
+        : file;
     const numMatch = cleaned.match(/^(\d+)/);
     if (numMatch) {
       const num = parseInt(numMatch[1], 10);
@@ -146,23 +181,54 @@ export async function nextId(
 
 // ─── Task Mover ────────────────────────────────────────────────
 
-/** Move a task to a new status by renaming its file. Returns the new filename. */
+/**
+ * Move a task to a new status by renaming its file.
+ *
+ * Routing rules:
+ * - `done`          → docs/tasks/done/<filename>
+ * - any other status → docs/tasks/<filename>
+ *
+ * Searches both directories to find the current file, so tasks can be
+ * moved back out of done (e.g. done → wip for re-opening).
+ *
+ * Returns the new filename (without directory).
+ */
 export async function moveTask(
   projectPath: string,
   taskId: string,
   newStatus: TaskStatus,
 ): Promise<string> {
-  const dir = docsDir(projectPath, "task");
-  const files = await listMdFiles(dir);
+  const activeDir = docsDir(projectPath, "task");
+  const finishedDir = doneDir(projectPath);
 
-  // Find the task file by ID
-  const taskFile = files.find((f) => {
-    const parsed = parseTaskFilename(f);
-    return parsed && parsed.id === taskId;
+  // Search active dir first, then done/
+  const activeFiles = await listMdFiles(activeDir);
+  const doneFiles = await listMdFiles(finishedDir);
+
+  let taskFile: string | undefined;
+  let sourceDir: string = activeDir;
+
+  const inActive = activeFiles.find((f) => {
+    const p = parseTaskFilename(f);
+    return p && p.id === taskId;
   });
 
+  if (inActive) {
+    taskFile = inActive;
+    sourceDir = activeDir;
+  } else {
+    const inDone = doneFiles.find((f) => {
+      const p = parseTaskFilename(f);
+      return p && p.id === taskId;
+    });
+    if (inDone) {
+      taskFile = inDone;
+      sourceDir = finishedDir;
+    }
+  }
+
   if (!taskFile) {
-    throw new Error(`Task ${taskId} not found in ${dir}`);
+    throw new Error(`Task ${taskId} not found`);
   }
 
   const parsed = parseTaskFilename(taskFile)!;
@@ -171,6 +237,12 @@ export async function moveTask(
   }
 
   const newFilename = `${newStatus}-${parsed.id}-${parsed.slug}.md`;
-  await rename(join(dir, taskFile), join(dir, newFilename));
+  const destDir = newStatus === "done" ? finishedDir : activeDir;
+
+  if (newStatus === "done") {
+    await mkdir(finishedDir, { recursive: true });
+  }
+
+  await rename(join(sourceDir, taskFile), join(destDir, newFilename));
   return newFilename;
 }
