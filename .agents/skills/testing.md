@@ -1,4 +1,4 @@
-# Testing
+# Skill: Testing
 
 Every new feature gets at least one test. Use the right kind for the job.
 

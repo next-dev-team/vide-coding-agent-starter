@@ -15,10 +15,10 @@ This is where the **why** of the project lives. Code is the *what* and *how*; th
 All files use **zero-padded sequential numbers**:
 
 - `prd/0001-add-todo.md`
-- `tasks/done-0001-add-todo-input.md`
+- `tasks/todo-0001-add-todo-input.md`
 - `decisions/0001-use-riverpod.md`
 
-Numbers never get reused. If a doc is abandoned, leave the file with `Status: dropped` rather than deleting.
+Numbers never get reused. If a doc is abandoned, leave the file rather than deleting it.
 
 ## Task Status (Filename Prefix)
 

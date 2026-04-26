@@ -1,4 +1,4 @@
-# Flutter Patterns
+# Skill: Flutter Patterns
 
 Rules for building widgets in this app.
 

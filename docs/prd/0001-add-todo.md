@@ -44,10 +44,10 @@ Every user, every session — this is the most fundamental interaction.
 
 ## References
 
-- Tasks: `docs/tasks/done-0001-add-todo-input.md`
+- Tasks: `docs/tasks/todo-0001-add-todo-input.md`
 - ADRs: `docs/decisions/0001-use-riverpod.md`
 
 ---
 
 **Tasks generated from this PRD:**
-- [x] `docs/tasks/done-0001-add-todo-input.md`
+- [ ] `docs/tasks/todo-0001-add-todo-input.md`

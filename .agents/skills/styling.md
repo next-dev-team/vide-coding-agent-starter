@@ -1,4 +1,4 @@
-# Styling
+# Skill: Styling
 
 Material 3, theme-driven. **Never hardcode colors, sizes, or font weights in widgets.**
 

@@ -1,4 +1,4 @@
-# Storage (Hive)
+# Skill: Storage (Hive)
 
 Local persistence. Hive is fast, NoSQL, no migrations to write by hand.
 

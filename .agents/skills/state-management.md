@@ -1,4 +1,4 @@
-# State Management (Riverpod)
+# Skill: State Management (Riverpod)
 
 This app uses `flutter_riverpod`. Read this before adding or modifying any provider.
 
