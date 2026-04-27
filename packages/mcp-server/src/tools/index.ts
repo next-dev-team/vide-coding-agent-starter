@@ -7,6 +7,7 @@ import {
   scanAdrs,
   nextId,
   moveTask,
+  resolveTaskDir,
   parseTask,
   parseTaskFilename,
   writeTask,
@@ -29,6 +30,12 @@ import {
 import { memoryDedupeTool, handleMemoryDedupe } from "./memory-dedupe.js";
 import { memorySessionTool, handleMemorySession } from "./memory-session.js";
 import { memoryConfigSetTool, handleMemoryConfigSet } from "./memory-config.js";
+import {
+  worktreeCreateTool, handleWorktreeCreate,
+  worktreeCleanupTool, handleWorktreeCleanup,
+} from "./worktree.js";
+import { prCreateTool, handlePrCreate } from "./pr-create.js";
+import { featureLoopTool, handleFeatureLoop } from "./feature-loop.js";
 
 /** Resolve project path — defaults to cwd. */
 function resolveProjectPath(args: Record<string, unknown>): string {
@@ -190,6 +197,11 @@ export function registerTools() {
     memoryDedupeTool,
     memorySessionTool,
     memoryConfigSetTool,
+    // ─── Git automation tools ────────────────────────────────
+    worktreeCreateTool,
+    worktreeCleanupTool,
+    prCreateTool,
+    featureLoopTool,
   ];
 }
 
@@ -253,7 +265,7 @@ export async function handleToolCall(
         const task = tasks.find((t) => t.id === args.task_id);
         if (!task) throw new Error(`Task ${args.task_id} not found`);
 
-        const filePath = join(projectPath, "docs", "tasks", task.filename);
+        const filePath = join(resolveTaskDir(projectPath, task.status), task.filename);
         let content = await readFile(filePath, "utf-8");
         const action = args.action as string;
 
@@ -379,6 +391,27 @@ export async function handleToolCall(
 
       case "memory_config_set": {
         result = handleMemoryConfigSet(args);
+        break;
+      }
+
+      // ─── Git automation tools ─────────────────────────────
+      case "worktree_create": {
+        result = await handleWorktreeCreate(args);
+        break;
+      }
+
+      case "worktree_cleanup": {
+        result = await handleWorktreeCleanup(args);
+        break;
+      }
+
+      case "pr_create": {
+        result = await handlePrCreate(args);
+        break;
+      }
+
+      case "feature_loop": {
+        result = await handleFeatureLoop(args);
         break;
       }
 

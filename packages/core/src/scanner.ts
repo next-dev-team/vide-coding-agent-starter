@@ -33,6 +33,16 @@ function doneDir(projectPath: string): string {
   return join(projectPath, "docs", "tasks", "done");
 }
 
+/**
+ * Resolve the correct directory for a task based on its status.
+ * Done tasks live in docs/tasks/done/, all others in docs/tasks/.
+ */
+export function resolveTaskDir(projectPath: string, status: TaskStatus): string {
+  return status === "done"
+    ? doneDir(projectPath)
+    : docsDir(projectPath, "task");
+}
+
 // ─── List files ────────────────────────────────────────────────
 
 /** List all markdown files in a directory, ignoring README and subdirectories. */
@@ -58,11 +68,22 @@ export async function scanTasks(projectPath: string): Promise<Task[]> {
   const finishedDir = doneDir(projectPath);
   const tasks: Task[] = [];
 
-  // Active tasks (todo / wip / blocked) — skip any stray done- files in root
+  // Active tasks (todo / wip / blocked)
+  // Auto-migrate any stray done- files in root to done/ subfolder.
   const activeFiles = await listMdFiles(activeDir);
   for (const file of activeFiles) {
     const parsed = parseTaskFilename(file);
-    if (!parsed || parsed.status === "done") continue;
+    if (!parsed) continue;
+    if (parsed.status === "done") {
+      // Auto-migrate stray done- files to the done/ subfolder
+      try {
+        await mkdir(finishedDir, { recursive: true });
+        await rename(join(activeDir, file), join(finishedDir, file));
+      } catch {
+        // If rename fails (e.g. file already exists), skip quietly
+      }
+      continue;
+    }
     try {
       const content = await readFile(join(activeDir, file), "utf-8");
       tasks.push(parseTask(file, content));

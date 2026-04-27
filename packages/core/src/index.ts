@@ -50,6 +50,7 @@ export {
   scanAdrs,
   nextId,
   moveTask,
+  resolveTaskDir,
 } from "./scanner.js";
 
 // ─── Memory Engine ─────────────────────────────────────────────

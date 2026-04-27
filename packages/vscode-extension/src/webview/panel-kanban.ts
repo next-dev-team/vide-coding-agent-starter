@@ -28,7 +28,9 @@ export function renderCardList(board: Board, status: string): string {
       </div>` : ""}
       <div class="card-actions" onclick="event.stopPropagation()">
         ${moveTargets.map(s => `<button class="move-btn" onclick="moveTask('${task.id}','${s}')">${s}</button>`).join("")}
-        ${task.status === "done" ? `<button class="move-btn" style="background:var(--vscode-button-background);color:var(--vscode-button-foreground);border-color:var(--vscode-button-background)" onclick="compoundLearnings('${task.id}')">⚡ Compound</button>` : ""}
+        ${task.status === "todo" ? `<button class="move-btn" style="background:var(--vscode-button-background);color:var(--vscode-button-foreground);border-color:var(--vscode-button-background)" onclick="startFeatureLoop('${task.id}')" title="Start full feature loop">🚀</button><button class="move-btn git-btn" onclick="worktreeCreate('${task.id}')" title="Create worktree + branch">🌿</button>` : ""}
+        ${task.status === "wip" ? `<button class="move-btn git-btn" onclick="createPr('${task.id}')" title="Create draft PR">🔀 PR</button><button class="move-btn git-btn" onclick="worktreeCleanup('${task.id}')" title="Remove worktree">🧹</button>` : ""}
+        ${task.status === "done" ? `<button class="move-btn" style="background:var(--vscode-button-background);color:var(--vscode-button-foreground);border-color:var(--vscode-button-background)" onclick="compoundLearnings('${task.id}')">⚡ Compound</button><button class="move-btn git-btn" onclick="worktreeCleanup('${task.id}')" title="Remove worktree">🧹</button>` : ""}
       </div>
     </div>`;
   }).join("");
@@ -70,19 +72,7 @@ export function renderKanbanPanel(board: Board): string {
     <h2>${board.totalTasks} tasks</h2>
     <button class="btn-refresh" onclick="refresh()" title="Refresh">↻</button>
   </div>
-  ${columnSections}
-  <div class="section" id="section-workflow-tools" data-status="workflow">
-    <div class="section-header" onclick="toggleSection('workflow-tools')">
-      <div class="section-title">
-        <span class="section-dot" style="background:#3498db"></span>
-        <span>Workflow Tools</span>
-      </div>
-      <div class="section-meta"><span class="chevron">›</span></div>
-    </div>
-    <div class="section-body">
-      ${renderWorkflowTools()}
-    </div>
-  </div>`;
+  ${columnSections}`;
 }
 
 export function renderColumnPanel(board: Board, status: string): string {

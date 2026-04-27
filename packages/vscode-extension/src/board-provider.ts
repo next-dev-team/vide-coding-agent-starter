@@ -1,6 +1,11 @@
 import * as vscode from "vscode";
 import { scanBoard, moveTask } from "@agent-kanban/core";
 import type { TaskStatus } from "@agent-kanban/core";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { existsSync } from "node:fs";
+import { rm } from "node:fs/promises";
+import { join } from "node:path";
 import { getHtml, getErrorHtml } from "./webview/index.js";
 
 /** Provides the unified Kanban board webview in the sidebar (Tabs: Kanban, Monitor, Settings). */
@@ -100,7 +105,8 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
       }
       // ── Settings ──────────────────────────────────────────────
       case "setupMcpServer": {
-        await vscode.commands.executeCommand("agentKanban.setupMcpServer");
+        const target = (msg.target as string) || "vscode";
+        await vscode.commands.executeCommand("agentKanban.setupMcpServer", target);
         break;
       }
       case "reloadWindow": {
@@ -121,6 +127,97 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
         vscode.window.showInformationMessage(
           `Memory backend: ask your agent to call memory_config_set with backend="${msg.backend}"`,
         );
+        break;
+      }
+      // ── Git automation ──────────────────────────────────────
+      case "worktreeCreate": {
+        const taskId = msg.taskId as string;
+        if (!taskId) break;
+        const branch = `task/${taskId}`;
+        const worktreePath = join(this.workspaceRoot, ".worktrees", taskId);
+        if (existsSync(worktreePath)) {
+          vscode.window.showInformationMessage(`Worktree already exists: ${worktreePath}`);
+          break;
+        }
+        try {
+          const exec = promisify(execFile);
+          // Check if branch already exists
+          let branchExists = false;
+          try {
+            await exec("git", ["rev-parse", "--verify", branch], { cwd: this.workspaceRoot });
+            branchExists = true;
+          } catch { /* branch does not exist */ }
+          if (branchExists) {
+            await exec("git", ["worktree", "add", worktreePath, branch], { cwd: this.workspaceRoot });
+          } else {
+            await exec("git", ["worktree", "add", worktreePath, "-b", branch], { cwd: this.workspaceRoot });
+          }
+          vscode.window.showInformationMessage(`✅ Worktree created: ${worktreePath} (branch: ${branch})`);
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          vscode.window.showErrorMessage(`Failed to create worktree: ${message}`);
+        }
+        break;
+      }
+      case "worktreeCleanup": {
+        const taskId = msg.taskId as string;
+        if (!taskId) break;
+        const worktreePath = join(this.workspaceRoot, ".worktrees", taskId);
+        if (!existsSync(worktreePath)) {
+          vscode.window.showInformationMessage(`No worktree found for task ${taskId}`);
+          break;
+        }
+        try {
+          await rm(worktreePath, { recursive: true, force: true });
+          const exec = promisify(execFile);
+          await exec("git", ["worktree", "prune"], { cwd: this.workspaceRoot });
+          vscode.window.showInformationMessage(`🗑️ Worktree removed for task ${taskId}`);
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          vscode.window.showErrorMessage(`Failed to remove worktree: ${message}`);
+        }
+        break;
+      }
+      case "createPr": {
+        const taskId = msg.taskId as string;
+        if (!taskId) break;
+        const md = [
+          `# Create PR — Task ${taskId}`, "",
+          "Run the following in your AI agent to create a PR:", "",
+          "```",
+          `Call the MCP tool pr_create with task_id: "${taskId}" to create a GitHub draft PR pre-filled from the task file.`,
+          "```",
+          "",
+          "Or manually:",
+          "```bash",
+          `gh pr create --draft --title "Task ${taskId}" --base main`,
+          "```",
+        ].join("\n");
+        const doc = await vscode.workspace.openTextDocument({ content: md, language: "markdown" });
+        await vscode.window.showTextDocument(doc, { preview: true });
+        break;
+      }
+      case "startFeatureLoop": {
+        const taskId = msg.taskId as string;
+        if (!taskId) break;
+        const md = [
+          `# 🚀 Feature Loop — Task ${taskId}`, "",
+          "Run the following in your AI agent to execute the full feature loop:", "",
+          "```",
+          `Call the MCP tool feature_loop with task_id: "${taskId}" to get the step-by-step orchestration plan, then execute each step in order.`,
+          "```", "",
+          "**The loop will:**",
+          "1. 📋 Read the task and plan the approach",
+          "2. 🌿 Create a git worktree and branch",
+          "3. 🔨 Implement (you write the code)",
+          "4. 🔒 Run security review checklist",
+          "5. ⚡ Run performance review checklist",
+          "6. 🔀 Create a draft PR",
+          "7. ✅ Move task to done",
+          "8. 🧠 Extract compound learnings",
+        ].join("\n");
+        const doc = await vscode.workspace.openTextDocument({ content: md, language: "markdown" });
+        await vscode.window.showTextDocument(doc, { preview: true });
         break;
       }
     }

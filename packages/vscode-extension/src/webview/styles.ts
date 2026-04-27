@@ -230,6 +230,10 @@ export const styles = /*css*/ `
     color: var(--vscode-button-foreground);
     border-color: var(--vscode-button-background);
   }
+  .git-btn {
+    background: var(--vscode-editorWidget-background);
+    border-style: dashed;
+  }
   .empty {
     font-size: 12px; opacity: 0.5; font-style: italic;
     text-align: center; padding: 20px 0;
@@ -286,4 +290,64 @@ export const styles = /*css*/ `
     line-height: 1;
   }
   .tbl-move:hover { background: var(--vscode-button-secondaryBackground); }
+
+  /* ── Workflow panel ──────────────────────────────────────── */
+  .wf-group {
+    margin-bottom: 12px;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .wf-group-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--vscode-editorWidget-background);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    user-select: none;
+  }
+  .wf-group-title:hover { background: var(--vscode-list-hoverBackground); }
+  .wf-group-body { padding: 10px; }
+  .wf-row { display: flex; gap: 6px; margin-top: 6px; }
+  .wf-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 11px;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 5px;
+    background: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+  }
+  .wf-btn:hover {
+    background: var(--vscode-list-hoverBackground);
+    border-color: var(--vscode-focusBorder);
+  }
+  .wf-btn.primary {
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border-color: var(--vscode-button-background);
+  }
+  .wf-btn.primary:hover { opacity: 0.85; }
+  .wf-btn.compact { padding: 6px 10px; }
+  .wf-icon { font-size: 14px; flex-shrink: 0; }
+  .wf-btn-text { display: flex; flex-direction: column; gap: 1px; }
+  .wf-btn-label { font-weight: 600; font-size: 11px; }
+  .wf-btn-desc { font-size: 10px; opacity: 0.6; }
+  .wf-hint { font-size: 11px; opacity: 0.65; margin-bottom: 6px; line-height: 1.5; }
+
+  /* ── Collapsible setup sections in Workflow tab ─────────── */
+  .setup-collapsible { display: none; }
+  .setup-collapsible.open { display: block; }
+  .wf-group-title .chevron { transition: transform 0.2s ease; }
+  .wf-group:has(.setup-collapsible.open) .wf-group-title .chevron { transform: rotate(90deg); }
 `;

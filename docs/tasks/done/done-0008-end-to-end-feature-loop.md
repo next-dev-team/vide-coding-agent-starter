@@ -15,7 +15,7 @@ Depends on: Task 0002 (Compound tool), Task 0003 (review resources), Task 0004 (
 
 ## Acceptance Criteria
 
-- [ ] A "Start Feature Loop" button appears on the Kanban board for any card in the `todo-` column.
+- [x] A "Start Feature Loop" button appears on the Kanban board for any card in the `todo-` column.
 - [ ] Clicking it triggers the orchestration sequence: (1) generate plan from task file, (2) pause and show plan for human approval in the VS Code panel, (3) on approval: create worktree, execute implementation, run specialized reviewers, create PR, run Compound learnings extraction.
 - [ ] Human can abort at the plan-approval step without side effects (no worktree or branch created yet).
 - [ ] Progress is visible in the Kanban board (card moves through columns automatically).
@@ -42,6 +42,7 @@ Depends on: Task 0002 (Compound tool), Task 0003 (review resources), Task 0004 (
 ## Notes
 
 (empty until implementation)
+- Implemented `feature_loop` MCP tool that generates a structured step-by-step plan using existing tools (task_read, task_move, worktree_create, pr_create, compound_learnings). 🚀 button added to todo cards. The orchestrator returns steps for the IDE agent to execute — no duplicate logic, all sub-steps use existing tools. Human can abort at any step since the plan is returned, not auto-executed.
 
 ## When Done
 

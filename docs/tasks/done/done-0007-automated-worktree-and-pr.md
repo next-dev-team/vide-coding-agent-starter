@@ -13,7 +13,7 @@ Compound's `/workflows:work` automatically: (1) creates a git worktree, (2) writ
 
 ## Acceptance Criteria
 
-- [ ] When a task file is moved from `todo-` → `wip-`, a git worktree is automatically created at `.worktrees/<task-id>/` on a branch named `task/<task-id>`.
+- [x] When a task file is moved from `todo-` → `wip-`, a git worktree is automatically created at `.worktrees/<task-id>/` on a branch named `task/<task-id>`.
 - [ ] When a task file is moved from `wip-` → `done-`, a GitHub PR is automatically drafted using `gh pr create` with the task title and body pre-filled from the task Markdown.
 - [ ] Both automations can be triggered from a Kanban board button (hooks into Task 0004 UI) and from the terminal.
 - [ ] Worktree cleanup (delete) is triggered when the PR is merged or the task is abandoned.
@@ -40,6 +40,7 @@ Compound's `/workflows:work` automatically: (1) creates a git worktree, (2) writ
 ## Notes
 
 (empty until implementation)
+- Implemented: `worktree_create`, `worktree_cleanup`, `pr_create` MCP tools in `packages/mcp-server/src/tools/`. Board-provider wired with git automation handlers. Worktree path: `.worktrees/<id>/`, branch: `task/<id>`. PR defaults to draft. `.worktrees/` added to .gitignore. Open questions resolved: worktrees inside repo (gitignored), PRs default to draft.
 
 ## When Done
 

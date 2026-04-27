@@ -1,8 +1,8 @@
 import type { Board } from "@agent-kanban/core";
 import { styles } from "./styles.js";
-import { renderKanbanPanel, renderTablePanel } from "./panel-kanban.js";
+import { renderKanbanPanel } from "./panel-kanban.js";
+import { renderWorkflowPanel } from "./panel-workflow.js";
 import { renderMonitorPanel } from "./panel-monitor.js";
-import { renderSettingsPanel } from "./panel-settings.js";
 
 // ── Client-side JS ────────────────────────────────────────────────────────────
 
@@ -43,23 +43,33 @@ const FULL_SCRIPTS = /*js*/ `
   function refresh()             { vscode.postMessage({ type: 'refresh' }); }
   function openFile(filename)    { vscode.postMessage({ type: 'openFile', filename }); }
   function moveTask(id, status)  { vscode.postMessage({ type: 'moveTask', taskId: id, newStatus: status }); }
-  function planFeature()         { vscode.postMessage({ type: 'planFeature' }); }
-  function requestReview(type)   { vscode.postMessage({ type: 'requestReview', reviewType: type }); }
   function compoundLearnings(id) { vscode.postMessage({ type: 'compoundLearnings', taskId: id }); }
 
-  // ── Monitor actions ────────────────────────────────────────────
-  function clearSession() { vscode.postMessage({ type: 'clearSession' }); }
+  // ── Git automation ────────────────────────────────────────────
+  function worktreeCreate(id)    { vscode.postMessage({ type: 'worktreeCreate', taskId: id }); }
+  function worktreeCleanup(id)   { vscode.postMessage({ type: 'worktreeCleanup', taskId: id }); }
+  function createPr(id)          { vscode.postMessage({ type: 'createPr', taskId: id }); }
+  function startFeatureLoop(id)  { vscode.postMessage({ type: 'startFeatureLoop', taskId: id }); }
 
-  // ── Settings actions ───────────────────────────────────────────
-  function toggleSetup(id)  { document.getElementById(id).classList.toggle('open'); }
-  function setupMcp()       { vscode.postMessage({ type: 'setupMcpServer' }); }
-  function reloadWindow()   { vscode.postMessage({ type: 'reloadWindow' }); }
-  function openDocs()       { vscode.postMessage({ type: 'openDocs' }); }
+  // ── Workflow actions ───────────────────────────────────────────
+  function planFeature()         { vscode.postMessage({ type: 'planFeature' }); }
+  function requestReview(type)   { vscode.postMessage({ type: 'requestReview', reviewType: type }); }
+  function setupMcp(target)       { vscode.postMessage({ type: 'setupMcpServer', target: target || 'vscode' }); }
+  function reloadWindow()        { vscode.postMessage({ type: 'reloadWindow' }); }
+  function openDocs()            { vscode.postMessage({ type: 'openDocs' }); }
   function setMemory(backend) {
     document.getElementById('mem-sqlite').classList.toggle('active', backend === 'sqlite');
     document.getElementById('mem-files').classList.toggle('active', backend === 'files');
     vscode.postMessage({ type: 'setMemoryBackend', backend });
   }
+
+  // ── Workflow collapsible sections ──────────────────────────────
+  function toggleSetup(id) {
+    document.getElementById(id).classList.toggle('open');
+  }
+
+  // ── Monitor actions ────────────────────────────────────────────
+  function clearSession() { vscode.postMessage({ type: 'clearSession' }); }
 
   // ── Memory Monitor listener ────────────────────────────────────
   window.addEventListener('message', function(event) {
@@ -69,7 +79,7 @@ const FULL_SCRIPTS = /*js*/ `
     const summary = msg.summary || {};
 
     // Animate tab badge
-    const badge = document.getElementById('tab-monitor-badge');
+    const badge = document.getElementById('tab-memory-badge');
     if (badge) {
       badge.textContent = entries.length;
       badge.style.display = entries.length > 0 ? '' : 'none';
@@ -87,7 +97,7 @@ const FULL_SCRIPTS = /*js*/ `
     table.style.display = '';
 
     rows.innerHTML = entries.map(function(e) {
-      const name = e.filePath.split(/[\\\\/]/).pop();
+      const name = e.filePath.split(/[\\\\\\/]/).pop();
       const saved = e.fullTokenCount - e.tokensUsed;
       const tc = e.tierLoaded === 'L2' ? 'var(--vscode-charts-red)'
                : e.tierLoaded === 'L1' ? 'var(--vscode-charts-yellow)'
@@ -108,7 +118,7 @@ const FULL_SCRIPTS = /*js*/ `
 
 /**
  * Builds the full single-webview HTML with a horizontal tab bar at the top.
- * Tabs: 📋 Kanban | 📊 Table | 🔍 Memory | ⚙️ Settings
+ * Tabs: 📋 Kanban | 🔄 Workflow | 🧠 Memory
  */
 export function getHtml(board: Board): string {
   return /*html*/ `<!DOCTYPE html>
@@ -122,25 +132,20 @@ export function getHtml(board: Board): string {
   <!-- Horizontal tab bar -->
   <div class="tab-bar">
     <button class="tab-btn active" id="tab-kanban" onclick="switchTab('kanban')">📋 Kanban</button>
-    <button class="tab-btn" id="tab-table" onclick="switchTab('table')">📊 Table</button>
-    <button class="tab-btn" id="tab-monitor" onclick="switchTab('monitor')">🔍 Memory <span id="tab-monitor-badge" style="display:none;background:var(--vscode-badge-background);color:var(--vscode-badge-foreground);font-size:9px;padding:1px 5px;border-radius:8px;margin-left:2px"></span></button>
-    <button class="tab-btn" id="tab-settings" onclick="switchTab('settings')">⚙️ Settings</button>
+    <button class="tab-btn" id="tab-workflow" onclick="switchTab('workflow')">🔄 Workflow</button>
+    <button class="tab-btn" id="tab-memory" onclick="switchTab('memory')">🧠 Memory <span id="tab-memory-badge" style="display:none;background:var(--vscode-badge-background);color:var(--vscode-badge-foreground);font-size:9px;padding:1px 5px;border-radius:8px;margin-left:2px"></span></button>
   </div>
 
   <div class="tab-panel active" id="panel-kanban">
     ${renderKanbanPanel(board)}
   </div>
 
-  <div class="tab-panel" id="panel-table">
-    ${renderTablePanel(board)}
+  <div class="tab-panel" id="panel-workflow">
+    ${renderWorkflowPanel()}
   </div>
 
-  <div class="tab-panel" id="panel-monitor">
+  <div class="tab-panel" id="panel-memory">
     ${renderMonitorPanel()}
-  </div>
-
-  <div class="tab-panel" id="panel-settings">
-    ${renderSettingsPanel()}
   </div>
 
   <script>${FULL_SCRIPTS}</script>

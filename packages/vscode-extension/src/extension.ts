@@ -91,8 +91,8 @@ export async function activate(context: vscode.ExtensionContext) {
       await vscode.window.showTextDocument(doc);
       vscode.window.showInformationMessage(`Created PRD: ${fname}`);
     }),
-    vscode.commands.registerCommand("agentKanban.setupMcpServer", async () => {
-      await setupMcpServer(workspaceRoot, context);
+    vscode.commands.registerCommand("agentKanban.setupMcpServer", async (target?: string) => {
+      await setupMcpServer(workspaceRoot, context, target || "vscode");
     }),
   );
 
@@ -105,19 +105,23 @@ export async function activate(context: vscode.ExtensionContext) {
       "Not Now",
     );
     if (choice === "Set Up MCP") {
-      await setupMcpServer(workspaceRoot, context);
+      await setupMcpServer(workspaceRoot, context, "vscode");
     }
   }
 }
 
 /**
- * Writes or merges `.vscode/mcp.json` with the Agent Kanban MCP server entry.
- * Resolves the server path relative to the extension install location so users
- * never need to edit paths by hand.
+ * Writes or merges MCP server config for the given target client.
+ *
+ * Supported targets:
+ * - `vscode`      → `.vscode/mcp.json`       (key: `servers`, includes `type: "stdio"`)
+ * - `antigravity` → `~/.gemini/antigravity/mcp_config.json` (key: `mcpServers`)
+ * - `cursor`      → `.cursor/mcp.json`       (key: `mcpServers`)
  */
 async function setupMcpServer(
   workspaceRoot: string,
   context: vscode.ExtensionContext,
+  target: string,
 ): Promise<void> {
   // Resolve the MCP server dist path — works both in dev and installed builds.
   const serverPath = resolve(
@@ -128,8 +132,52 @@ async function setupMcpServer(
     "index.js",
   );
 
-  const vscodeDirPath = join(workspaceRoot, ".vscode");
-  const mcpJsonPath = join(vscodeDirPath, "mcp.json");
+  let configDirPath: string;
+  let mcpJsonPath: string;
+  let serversKey: string;
+  let entryValue: Record<string, unknown>;
+  let targetLabel: string;
+
+  switch (target) {
+    case "antigravity": {
+      // Antigravity uses a global config at ~/.gemini/antigravity/mcp_config.json
+      const homeDir = process.env.USERPROFILE || process.env.HOME || "";
+      configDirPath = join(homeDir, ".gemini", "antigravity");
+      mcpJsonPath = join(configDirPath, "mcp_config.json");
+      serversKey = "mcpServers";
+      entryValue = {
+        command: "node",
+        args: [serverPath],
+        disabled: false,
+      };
+      targetLabel = "Antigravity (~/.gemini/antigravity/mcp_config.json)";
+      break;
+    }
+    case "cursor": {
+      configDirPath = join(workspaceRoot, ".cursor");
+      mcpJsonPath = join(configDirPath, "mcp.json");
+      serversKey = "mcpServers";
+      entryValue = {
+        command: "node",
+        args: [serverPath],
+      };
+      targetLabel = "Cursor (.cursor/mcp.json)";
+      break;
+    }
+    default: {
+      // VS Code / Copilot
+      configDirPath = join(workspaceRoot, ".vscode");
+      mcpJsonPath = join(configDirPath, "mcp.json");
+      serversKey = "servers";
+      entryValue = {
+        type: "stdio",
+        command: "node",
+        args: [serverPath],
+      };
+      targetLabel = "VS Code (.vscode/mcp.json)";
+      break;
+    }
+  }
 
   // Read existing config or start fresh.
   let config: Record<string, unknown> = {};
@@ -143,20 +191,16 @@ async function setupMcpServer(
   }
 
   // Merge in the kanban server entry without touching other servers.
-  const servers = (config["servers"] ?? {}) as Record<string, unknown>;
-  servers["kanban"] = {
-    type: "stdio",
-    command: "node",
-    args: [serverPath],
-  };
-  config["servers"] = servers;
+  const servers = (config[serversKey] ?? {}) as Record<string, unknown>;
+  servers["agent-kanban"] = entryValue;
+  config[serversKey] = servers;
 
-  await mkdir(vscodeDirPath, { recursive: true });
+  await mkdir(configDirPath, { recursive: true });
   await writeFile(mcpJsonPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
 
-  const openAction = "Open mcp.json";
+  const openAction = "Open Config";
   const choice = await vscode.window.showInformationMessage(
-    `✅ MCP server configured at .vscode/mcp.json. Restart VS Code (or reload the window) to activate.`,
+    `✅ MCP server configured for ${targetLabel}. Reload the window to activate.`,
     openAction,
   );
   if (choice === openAction) {

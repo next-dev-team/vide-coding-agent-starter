@@ -28,3 +28,6 @@ packages/vscode-extension/agent-kanban-vscode-0.1.0.vsix
 .agent-kanban/
 # Protect any stray .db files that land in docs/
 docs/memory/*.db
+
+# Git worktrees (created by task automation)
+.worktrees/
