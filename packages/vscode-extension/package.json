@@ -2,8 +2,12 @@
   "name": "agent-kanban-vscode",
   "displayName": "Agent Kanban",
   "description": "Trello-like Kanban board for markdown-based task management — works with AI agents via MCP",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "agent-kanban",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/next-dev-team/vide-coding-agent-starter"
+  },
   "engines": {
     "vscode": "^1.100.0"
   },
@@ -14,6 +18,7 @@
     "workspaceContains:docs/tasks"
   ],
   "main": "./dist/extension.js",
+  "type": "module",
   "contributes": {
     "commands": [
       {
@@ -34,6 +39,11 @@
       {
         "command": "agentKanban.createPrd",
         "title": "New PRD",
+        "category": "Agent Kanban"
+      },
+      {
+        "command": "agentKanban.setupMcpServer",
+        "title": "Setup MCP Server (GitHub Copilot)",
         "category": "Agent Kanban"
       }
     ],

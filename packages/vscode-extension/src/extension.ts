@@ -2,11 +2,12 @@ import * as vscode from "vscode";
 import { BoardViewProvider } from "./board-provider.js";
 import { StatusBarManager } from "./status-bar.js";
 import { scanBoard, nextId, writeTask, taskFilename, writePrd, prdFilename } from "@agent-kanban/core";
-import { writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { writeFile, readFile, mkdir } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import { existsSync } from "node:fs";
 
 /** Extension entry point. */
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   if (!workspaceRoot) return;
 
@@ -90,7 +91,78 @@ export function activate(context: vscode.ExtensionContext) {
       await vscode.window.showTextDocument(doc);
       vscode.window.showInformationMessage(`Created PRD: ${fname}`);
     }),
+    vscode.commands.registerCommand("agentKanban.setupMcpServer", async () => {
+      await setupMcpServer(workspaceRoot, context);
+    }),
   );
+
+  // ─── First-run: prompt MCP setup if .vscode/mcp.json missing ──
+  const mcpJsonPath = join(workspaceRoot, ".vscode", "mcp.json");
+  if (!existsSync(mcpJsonPath)) {
+    const choice = await vscode.window.showInformationMessage(
+      "Agent Kanban: No MCP server config found. Set it up now so AI agents (Copilot, etc.) can manage your Kanban board?",
+      "Set Up MCP",
+      "Not Now",
+    );
+    if (choice === "Set Up MCP") {
+      await setupMcpServer(workspaceRoot, context);
+    }
+  }
+}
+
+/**
+ * Writes or merges `.vscode/mcp.json` with the Agent Kanban MCP server entry.
+ * Resolves the server path relative to the extension install location so users
+ * never need to edit paths by hand.
+ */
+async function setupMcpServer(
+  workspaceRoot: string,
+  context: vscode.ExtensionContext,
+): Promise<void> {
+  // Resolve the MCP server dist path — works both in dev and installed builds.
+  const serverPath = resolve(
+    context.extensionPath,
+    "..",
+    "mcp-server",
+    "dist",
+    "index.js",
+  );
+
+  const vscodeDirPath = join(workspaceRoot, ".vscode");
+  const mcpJsonPath = join(vscodeDirPath, "mcp.json");
+
+  // Read existing config or start fresh.
+  let config: Record<string, unknown> = {};
+  if (existsSync(mcpJsonPath)) {
+    try {
+      const raw = await readFile(mcpJsonPath, "utf-8");
+      config = JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      // Ignore parse errors — we'll overwrite the kanban entry only.
+    }
+  }
+
+  // Merge in the kanban server entry without touching other servers.
+  const servers = (config["servers"] ?? {}) as Record<string, unknown>;
+  servers["kanban"] = {
+    type: "stdio",
+    command: "node",
+    args: [serverPath],
+  };
+  config["servers"] = servers;
+
+  await mkdir(vscodeDirPath, { recursive: true });
+  await writeFile(mcpJsonPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
+
+  const openAction = "Open mcp.json";
+  const choice = await vscode.window.showInformationMessage(
+    `✅ MCP server configured at .vscode/mcp.json. Restart VS Code (or reload the window) to activate.`,
+    openAction,
+  );
+  if (choice === openAction) {
+    const doc = await vscode.workspace.openTextDocument(mcpJsonPath);
+    await vscode.window.showTextDocument(doc);
+  }
 }
 
 export function deactivate() {}

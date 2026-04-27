@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "kanban": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "c:\\Users\\MT-Staff\\.antigravity\\extensions\\mcp-server\\dist\\index.js"
+      ]
+    }
+  }
+}

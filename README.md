@@ -52,7 +52,8 @@ npx create-kanban-app doctor     # validate your project structure
 
 The MCP server lets **any AI agent** manage your Kanban board programmatically â€” create tasks, move cards, read PRDs, etc.
 
-### Available MCP Tools
+<details>
+<summary><strong>Available MCP Tools</strong></summary>
 
 | Tool           | Description                                    |
 | -------------- | ---------------------------------------------- |
@@ -66,7 +67,10 @@ The MCP server lets **any AI agent** manage your Kanban board programmatically â
 | `adr_create`   | Create a new ADR                               |
 | `next_id`      | Get next sequential ID                         |
 
-### Available MCP Resources
+</details>
+
+<details>
+<summary><strong>Available MCP Resources</strong></summary>
 
 | Resource URI       | Description                               |
 | ------------------ | ----------------------------------------- |
@@ -75,7 +79,10 @@ The MCP server lets **any AI agent** manage your Kanban board programmatically â
 | `kanban://prds`    | All product requirement documents         |
 | `kanban://adrs`    | All architecture decision records         |
 
-### Setup for Cursor
+</details>
+
+<details>
+<summary><strong>Setup for Cursor</strong></summary>
 
 Create `.cursor/mcp.json` in your project root:
 
@@ -104,7 +111,10 @@ Or in your global Cursor settings (`~/.cursor/mcp.json`):
 }
 ```
 
-### Setup for Claude Code / Anthropic
+</details>
+
+<details>
+<summary><strong>Setup for Claude Code / Anthropic</strong></summary>
 
 Add to your project's `.mcp.json`:
 
@@ -125,7 +135,10 @@ Or add it via the CLI:
 claude mcp add kanban node /absolute/path/to/agent-kanban/packages/mcp-server/dist/index.js
 ```
 
-### Setup for Gemini CLI
+</details>
+
+<details>
+<summary><strong>Setup for Gemini CLI</strong></summary>
 
 Add to `~/.gemini/settings.json`:
 
@@ -140,7 +153,10 @@ Add to `~/.gemini/settings.json`:
 }
 ```
 
-### Setup for VS Code Copilot (GitHub Copilot)
+</details>
+
+<details>
+<summary><strong>Setup for VS Code Copilot (GitHub Copilot)</strong></summary>
 
 Add to `.vscode/mcp.json` in your project:
 
@@ -156,7 +172,10 @@ Add to `.vscode/mcp.json` in your project:
 }
 ```
 
-### Setup for Windsurf / Codeium
+</details>
+
+<details>
+<summary><strong>Setup for Windsurf / Codeium</strong></summary>
 
 Add to `~/.codeium/windsurf/mcp_config.json`:
 
@@ -171,7 +190,10 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 }
 ```
 
-### Setup for Antigravity
+</details>
+
+<details>
+<summary><strong>Setup for Antigravity</strong></summary>
 
 Add to your workspace or global MCP settings:
 
@@ -186,7 +208,10 @@ Add to your workspace or global MCP settings:
 }
 ```
 
-### Windows Users
+</details>
+
+<details>
+<summary><strong>Windows Users</strong></summary>
 
 On Windows, replace paths with backslashes or use forward slashes:
 
@@ -200,6 +225,8 @@ On Windows, replace paths with backslashes or use forward slashes:
   }
 }
 ```
+
+</details>
 
 > **Tip**: After adding the config, restart your AI tool. Then ask your agent: *"Use the board_list tool to show me my Kanban board."*
 
