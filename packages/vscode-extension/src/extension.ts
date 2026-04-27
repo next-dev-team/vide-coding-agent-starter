@@ -31,6 +31,24 @@ export async function activate(context: vscode.ExtensionContext) {
   watcher.onDidDelete(() => { boardProvider.refresh(); statusBar.update(); });
   context.subscriptions.push(watcher);
 
+  // Also watch done/ subfolder
+  const doneWatcher = vscode.workspace.createFileSystemWatcher(
+    new vscode.RelativePattern(workspaceRoot, "docs/tasks/done/*.md"),
+  );
+  doneWatcher.onDidChange(() => { boardProvider.refresh(); statusBar.update(); });
+  doneWatcher.onDidCreate(() => { boardProvider.refresh(); statusBar.update(); });
+  doneWatcher.onDidDelete(() => { boardProvider.refresh(); statusBar.update(); });
+  context.subscriptions.push(doneWatcher);
+
+  // Watch .agents/skills/ for skill changes
+  const skillsWatcher = vscode.workspace.createFileSystemWatcher(
+    new vscode.RelativePattern(workspaceRoot, ".agents/skills/**/*.md"),
+  );
+  skillsWatcher.onDidChange(() => { boardProvider.refresh(); });
+  skillsWatcher.onDidCreate(() => { boardProvider.refresh(); });
+  skillsWatcher.onDidDelete(() => { boardProvider.refresh(); });
+  context.subscriptions.push(skillsWatcher);
+
   // ─── Commands ──────────────────────────────────────────────
   context.subscriptions.push(
     vscode.commands.registerCommand("agentKanban.openBoard", () => {
@@ -93,6 +111,9 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand("agentKanban.setupMcpServer", async (target?: string) => {
       await setupMcpServer(workspaceRoot, context, target || "vscode");
+    }),
+    vscode.commands.registerCommand("agentKanban.setupCompanion", async (server?: string) => {
+      await setupCompanionServer(workspaceRoot, server || "context7");
     }),
   );
 
@@ -205,6 +226,124 @@ async function setupMcpServer(
   );
   if (choice === openAction) {
     const doc = await vscode.workspace.openTextDocument(mcpJsonPath);
+    await vscode.window.showTextDocument(doc);
+  }
+}
+
+/** Companion MCP server definitions. */
+const COMPANION_SERVERS: Record<string, {
+  label: string;
+  vscode: Record<string, unknown>;
+  mcpServers: Record<string, unknown>;
+}> = {
+  context7: {
+    label: "Context7",
+    vscode: {
+      type: "stdio",
+      command: "npx",
+      args: ["-y", "@upstash/context7-mcp@latest"],
+      env: { DEFAULT_MINIMUM_TOKENS: "10000" },
+    },
+    mcpServers: {
+      command: "npx",
+      args: ["-y", "@upstash/context7-mcp@latest"],
+      env: { DEFAULT_MINIMUM_TOKENS: "10000" },
+      disabled: false,
+    },
+  },
+  playwright: {
+    label: "Playwright",
+    vscode: {
+      type: "stdio",
+      command: "npx",
+      args: ["-y", "@playwright/mcp@latest"],
+    },
+    mcpServers: {
+      command: "npx",
+      args: ["-y", "@playwright/mcp@latest"],
+      disabled: false,
+    },
+  },
+};
+
+/**
+ * Writes a companion MCP server (Context7 or Playwright) into .vscode/mcp.json.
+ * Also attempts to write it to the Antigravity global config and .cursor/mcp.json
+ * if those files already exist (non-destructive merge).
+ */
+async function setupCompanionServer(
+  workspaceRoot: string,
+  server: string,
+): Promise<void> {
+  const def = COMPANION_SERVERS[server];
+  if (!def) {
+    vscode.window.showErrorMessage(`Unknown companion server: ${server}`);
+    return;
+  }
+
+  const targets: Array<{
+    path: string;
+    key: string;
+    entry: Record<string, unknown>;
+    label: string;
+  }> = [];
+
+  // Always write to .vscode/mcp.json
+  targets.push({
+    path: join(workspaceRoot, ".vscode", "mcp.json"),
+    key: "servers",
+    entry: def.vscode,
+    label: ".vscode/mcp.json",
+  });
+
+  // Also merge into .cursor/mcp.json if it exists
+  const cursorPath = join(workspaceRoot, ".cursor", "mcp.json");
+  if (existsSync(cursorPath)) {
+    targets.push({
+      path: cursorPath,
+      key: "mcpServers",
+      entry: def.mcpServers,
+      label: ".cursor/mcp.json",
+    });
+  }
+
+  // Also merge into Antigravity global config if it exists
+  const homeDir = process.env.USERPROFILE || process.env.HOME || "";
+  const antigravityPath = join(homeDir, ".gemini", "antigravity", "mcp_config.json");
+  if (existsSync(antigravityPath)) {
+    targets.push({
+      path: antigravityPath,
+      key: "mcpServers",
+      entry: def.mcpServers,
+      label: "~/.gemini/antigravity/mcp_config.json",
+    });
+  }
+
+  const written: string[] = [];
+  for (const t of targets) {
+    let config: Record<string, unknown> = {};
+    try {
+      const raw = await readFile(t.path, "utf-8");
+      config = JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      // start fresh
+    }
+    const servers = (config[t.key] ?? {}) as Record<string, unknown>;
+    servers[server] = t.entry;
+    config[t.key] = servers;
+
+    await mkdir(join(t.path, ".."), { recursive: true });
+    await writeFile(t.path, JSON.stringify(config, null, 2) + "\n", "utf-8");
+    written.push(t.label);
+  }
+
+  const openAction = "Open Config";
+  const choice = await vscode.window.showInformationMessage(
+    `✅ ${def.label} added to: ${written.join(", ")}. Reload to activate.`,
+    openAction,
+  );
+  if (choice === openAction) {
+    const doc = await vscode.workspace.openTextDocument(targets[0].path);
     await vscode.window.showTextDocument(doc);
   }
 }

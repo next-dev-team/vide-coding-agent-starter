@@ -2,7 +2,10 @@ import type { Board } from "@agent-kanban/core";
 import { styles } from "./styles.js";
 import { renderKanbanPanel } from "./panel-kanban.js";
 import { renderWorkflowPanel } from "./panel-workflow.js";
+import { renderMcpPanel } from "./panel-mcp.js";
 import { renderMonitorPanel } from "./panel-monitor.js";
+import { renderSkillsPanel } from "./panel-skills.js";
+import type { SkillInfo } from "./panel-skills.js";
 
 // ── Client-side JS ────────────────────────────────────────────────────────────
 
@@ -54,16 +57,48 @@ const FULL_SCRIPTS = /*js*/ `
   // ── Workflow actions ───────────────────────────────────────────
   function planFeature()         { vscode.postMessage({ type: 'planFeature' }); }
   function requestReview(type)   { vscode.postMessage({ type: 'requestReview', reviewType: type }); }
-  function setupMcp(target)       { vscode.postMessage({ type: 'setupMcpServer', target: target || 'vscode' }); }
-  function reloadWindow()        { vscode.postMessage({ type: 'reloadWindow' }); }
-  function openDocs()            { vscode.postMessage({ type: 'openDocs' }); }
+  function initAgentsMd() {
+    var ctx7 = document.getElementById('agents-include-context7');
+    var pw   = document.getElementById('agents-include-playwright');
+    vscode.postMessage({
+      type: 'initAgentsMd',
+      includeContext7: ctx7 ? ctx7.checked : false,
+      includePlaywright: pw ? pw.checked : false,
+    });
+  }
   function setMemory(backend) {
     document.getElementById('mem-sqlite').classList.toggle('active', backend === 'sqlite');
     document.getElementById('mem-files').classList.toggle('active', backend === 'files');
     vscode.postMessage({ type: 'setMemoryBackend', backend });
   }
+  function openDocs()            { vscode.postMessage({ type: 'openDocs' }); }
 
-  // ── Workflow collapsible sections ──────────────────────────────
+  // ── Skills actions ────────────────────────────────────────────
+  function initSkills()           { vscode.postMessage({ type: 'initSkills' }); }
+  function createSkill()          { vscode.postMessage({ type: 'createSkill' }); }
+  function importVercelSkills()   { vscode.postMessage({ type: 'importVercelSkills' }); }
+  function refreshSkills()        { vscode.postMessage({ type: 'refreshSkills' }); }
+  function openSkill(path)        { vscode.postMessage({ type: 'openSkill', path }); }
+  function setupAgentSkills(agent){ vscode.postMessage({ type: 'setupAgentSkills', agent }); }
+
+  // ── MCP tab actions ───────────────────────────────────────────
+  function setupMcp(target)       { vscode.postMessage({ type: 'setupMcpServer', target: target || 'vscode' }); }
+  function setupCompanion(server)  { vscode.postMessage({ type: 'setupCompanion', server }); }
+  function reloadWindow()        { vscode.postMessage({ type: 'reloadWindow' }); }
+  function copyToolName(name) {
+    navigator.clipboard.writeText(name).then(function() {
+      // Show brief toast feedback
+      var toast = document.getElementById('copy-toast');
+      if (toast) {
+        toast.textContent = 'Copied: ' + name;
+        toast.classList.add('show');
+        clearTimeout(toast._timer);
+        toast._timer = setTimeout(function() { toast.classList.remove('show'); }, 1500);
+      }
+    });
+  }
+
+  // ── Collapsible sections ──────────────────────────────────────
   function toggleSetup(id) {
     document.getElementById(id).classList.toggle('open');
   }
@@ -118,9 +153,9 @@ const FULL_SCRIPTS = /*js*/ `
 
 /**
  * Builds the full single-webview HTML with a horizontal tab bar at the top.
- * Tabs: 📋 Kanban | 🔄 Workflow | 🧠 Memory
+ * Tabs: 📋 Kanban | ⚙️ Skills | 🔄 Workflow | 🔌 MCP | 🧠 Memory
  */
-export function getHtml(board: Board): string {
+export function getHtml(board: Board, skills: SkillInfo[] = []): string {
   return /*html*/ `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -129,10 +164,15 @@ export function getHtml(board: Board): string {
   <style>${styles}</style>
 </head>
 <body>
+  <!-- Copy toast notification -->
+  <div id="copy-toast" class="copy-toast"></div>
+
   <!-- Horizontal tab bar -->
   <div class="tab-bar">
     <button class="tab-btn active" id="tab-kanban" onclick="switchTab('kanban')">📋 Kanban</button>
+    <button class="tab-btn" id="tab-skills" onclick="switchTab('skills')">⚙️ Skills <span id="tab-skills-badge" style="display:none;background:var(--vscode-badge-background);color:var(--vscode-badge-foreground);font-size:9px;padding:1px 5px;border-radius:8px;margin-left:2px">${skills.length || ''}</span></button>
     <button class="tab-btn" id="tab-workflow" onclick="switchTab('workflow')">🔄 Workflow</button>
+    <button class="tab-btn" id="tab-mcp" onclick="switchTab('mcp')">🔌 MCP</button>
     <button class="tab-btn" id="tab-memory" onclick="switchTab('memory')">🧠 Memory <span id="tab-memory-badge" style="display:none;background:var(--vscode-badge-background);color:var(--vscode-badge-foreground);font-size:9px;padding:1px 5px;border-radius:8px;margin-left:2px"></span></button>
   </div>
 
@@ -140,8 +180,16 @@ export function getHtml(board: Board): string {
     ${renderKanbanPanel(board)}
   </div>
 
+  <div class="tab-panel" id="panel-skills">
+    ${renderSkillsPanel(skills)}
+  </div>
+
   <div class="tab-panel" id="panel-workflow">
     ${renderWorkflowPanel()}
+  </div>
+
+  <div class="tab-panel" id="panel-mcp">
+    ${renderMcpPanel()}
   </div>
 
   <div class="tab-panel" id="panel-memory">

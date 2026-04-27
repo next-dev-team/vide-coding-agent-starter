@@ -31,3 +31,4 @@ docs/memory/*.db
 
 # Git worktrees (created by task automation)
 .worktrees/
+.vsix

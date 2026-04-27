@@ -115,6 +115,65 @@ Task files in `docs/tasks/` use a status prefix in the filename:
 
 Rename the file to update status — don't edit a status field inside.
 
+## MCP Companion Servers
+
+This project relies on three MCP servers working together. All three should be configured in your IDE's MCP settings:
+
+| Server | Purpose | When to use |
+|--------|---------|-------------|
+| **agent-kanban** | Task management, memory, PRDs, ADRs | Always — core workflow orchestration |
+| **context7** | Live documentation lookup | Before using any library API, framework feature, or CLI tool |
+| **playwright** | Browser automation & testing | UI verification, E2E testing, visual regression |
+
+### Context7 — Documentation-First Development
+
+**Always use Context7 before writing code that touches a library or framework** — even well-known ones like React, Node.js, or TypeScript. Your training data may be stale; Context7 fetches the latest docs.
+
+**Workflow:**
+1. Call `resolve-library-id` to find the Context7 library ID
+2. Call `query-docs` with the resolved ID and your specific question
+3. If the first answer is insufficient, retry with `researchMode: true`
+
+**When to use:**
+- API syntax or configuration for any dependency
+- Version migration or breaking change checks
+- Library-specific debugging or setup instructions
+- CLI tool usage patterns
+- Before proposing a new package (check if an existing one covers the need)
+
+**Examples:**
+```
+# Resolve a library first
+resolve-library-id { libraryName: "vitest", query: "mock module imports" }
+
+# Then query its docs
+query-docs { libraryId: "/vitest-dev/vitest", query: "how to mock ES module imports" }
+```
+
+### Playwright — Browser Automation & Testing
+
+**Use Playwright for any task that requires interacting with or verifying a running web application.** This includes the VS Code extension webview during development.
+
+**When to use:**
+- Verifying UI renders correctly after changes
+- E2E testing of web-based features
+- Taking screenshots for visual comparison
+- Filling forms, clicking buttons, navigating pages
+- Scraping content from running dev servers
+
+**Examples:**
+```
+# Navigate and screenshot
+playwright_navigate { url: "http://localhost:5173" }
+playwright_screenshot { name: "homepage" }
+
+# Interact with elements
+playwright_click { selector: "[data-testid='add-task']" }
+playwright_fill { selector: "#task-title", value: "New task" }
+```
+
+**Rule:** When a task's acceptance criteria include UI behavior, use Playwright to verify it before marking the task as done.
+
 ## What to Ask vs Assume
 
 **Ask the user before:**
@@ -133,16 +192,20 @@ Rename the file to update status — don't edit a status field inside.
 - Fixing lint warnings or type errors
 - Adding obvious JSDoc comments
 - Renaming a task file to update its status
+- Using Context7 to look up library documentation
+- Using Playwright to verify UI changes
 
 ## Skills & References
 
-| Task involves...                               | Read                                 |
+| Task involves...                               | Read / Use                           |
 | ---------------------------------------------- | ------------------------------------ |
 | Working from a PRD or task                     | `.agents/workflows/feature-loop.md`  |
 | Writing a task (for yourself or another agent) | `.agents/skills/task-writing.md`     |
 | Writing a PRD                                  | `.agents/templates/prd.md`           |
 | Writing a task                                 | `.agents/templates/task.md`          |
 | Logging a decision                             | `.agents/templates/adr.md`           |
+| Looking up library/framework docs              | Context7 MCP → `resolve-library-id` then `query-docs` |
+| Verifying UI or running E2E tests              | Playwright MCP → `navigate`, `screenshot`, `click`, `fill` |
 
 ## Definition of Done
 

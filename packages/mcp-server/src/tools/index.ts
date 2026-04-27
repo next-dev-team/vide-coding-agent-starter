@@ -36,6 +36,7 @@ import {
 } from "./worktree.js";
 import { prCreateTool, handlePrCreate } from "./pr-create.js";
 import { featureLoopTool, handleFeatureLoop } from "./feature-loop.js";
+import { agentsGenerateTool, handleAgentsGenerate } from "./agents-generate.js";
 
 /** Resolve project path — defaults to cwd. */
 function resolveProjectPath(args: Record<string, unknown>): string {
@@ -202,6 +203,8 @@ export function registerTools() {
     worktreeCleanupTool,
     prCreateTool,
     featureLoopTool,
+    // ─── Project context tools ───────────────────────────────
+    agentsGenerateTool,
   ];
 }
 
@@ -412,6 +415,11 @@ export async function handleToolCall(
 
       case "feature_loop": {
         result = await handleFeatureLoop(args);
+        break;
+      }
+
+      case "agents_generate": {
+        result = await handleAgentsGenerate(args);
         break;
       }
 

@@ -350,4 +350,272 @@ export const styles = /*css*/ `
   .setup-collapsible.open { display: block; }
   .wf-group-title .chevron { transition: transform 0.2s ease; }
   .wf-group:has(.setup-collapsible.open) .wf-group-title .chevron { transform: rotate(90deg); }
+
+  /* ── Sub-section titles inside workflow groups ─────────── */
+  .wf-sub-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.55;
+    margin: 2px 0 4px;
+    padding-left: 2px;
+  }
+
+  /* ── Memory toggle buttons ────────────────────────────── */
+  .mem-toggle {
+    display: flex;
+    gap: 4px;
+  }
+  .mem-toggle button {
+    flex: 1;
+    padding: 6px 0;
+    font-size: 11px;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 5px;
+    background: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .mem-toggle button:hover {
+    border-color: var(--vscode-focusBorder);
+  }
+  .mem-toggle button.active {
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border-color: var(--vscode-button-background);
+  }
+
+  /* ── Skills panel ──────────────────────────────────────────── */
+  .skill-card {
+    background: var(--vscode-editor-background);
+    border: 1px solid var(--vscode-panel-border);
+    border-left: 3px solid var(--vscode-charts-blue);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .skill-card:last-child { margin-bottom: 0; }
+  .skill-card:hover {
+    border-right-color: var(--vscode-focusBorder);
+    border-top-color: var(--vscode-focusBorder);
+    border-bottom-color: var(--vscode-focusBorder);
+    background: var(--vscode-list-hoverBackground);
+  }
+  .skill-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .skill-card-name {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .skill-card-desc {
+    font-size: 11px;
+    opacity: 0.7;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .skill-card-path {
+    margin-top: 4px;
+    font-size: 10px;
+    opacity: 0.45;
+  }
+  .skill-card-path code {
+    font-family: var(--vscode-editor-font-family);
+    font-size: 10px;
+  }
+  .skill-format-badge {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 2px 6px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .skill-format-badge.local {
+    background: color-mix(in srgb, var(--vscode-charts-green) 20%, transparent);
+    color: var(--vscode-charts-green);
+  }
+  .skill-format-badge.vercel {
+    background: color-mix(in srgb, var(--vscode-charts-purple, #a855f7) 20%, transparent);
+    color: var(--vscode-charts-purple, #a855f7);
+  }
+  .skill-format-badge.cursor {
+    background: color-mix(in srgb, var(--vscode-charts-blue) 20%, transparent);
+    color: var(--vscode-charts-blue);
+  }
+  .skill-format-badge.copilot {
+    background: color-mix(in srgb, var(--vscode-charts-orange, #f59e0b) 20%, transparent);
+    color: var(--vscode-charts-orange, #f59e0b);
+  }
+  .skill-format-badge.claude {
+    background: color-mix(in srgb, var(--vscode-charts-yellow) 20%, transparent);
+    color: var(--vscode-charts-yellow);
+  }
+  .skill-agent-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .skill-agent-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    font-size: 11px;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 5px;
+    background: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .skill-agent-row:hover {
+    background: var(--vscode-list-hoverBackground);
+    border-color: var(--vscode-focusBorder);
+  }
+  .skill-agent-arrow {
+    margin-left: auto;
+    opacity: 0.4;
+    font-size: 13px;
+    transition: transform 0.15s, opacity 0.15s;
+  }
+  .skill-agent-row:hover .skill-agent-arrow {
+    opacity: 0.8;
+    transform: translateX(2px);
+  }
+
+  /* ── MCP Tool List ────────────────────────────────────────── */
+  .mcp-tool-group {
+    margin-bottom: 8px;
+  }
+  .mcp-tool-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.12s;
+    position: relative;
+  }
+  .mcp-tool-row:hover {
+    background: var(--vscode-list-hoverBackground);
+  }
+  .mcp-tool-row:active {
+    background: var(--vscode-list-activeSelectionBackground);
+  }
+  .mcp-tool-name {
+    font-family: var(--vscode-editor-font-family);
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--vscode-editorWidget-background);
+    padding: 2px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: 0;
+  }
+  .mcp-tool-desc {
+    font-size: 10px;
+    opacity: 0.6;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+  .mcp-copy-icon {
+    font-size: 10px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+  }
+  .mcp-tool-row:hover .mcp-copy-icon {
+    opacity: 0.6;
+  }
+
+  /* ── Copy toast ───────────────────────────────────────────── */
+  .copy-toast {
+    position: fixed;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%) translateY(40px);
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 999;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .copy-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ── AGENTS.md init checkboxes ────────────────────────────── */
+  .agents-md-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    margin-bottom: 4px;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 5px;
+    background: var(--vscode-editor-background);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .agents-md-check:hover {
+    background: var(--vscode-list-hoverBackground);
+    border-color: var(--vscode-focusBorder);
+  }
+  .agents-md-check input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--vscode-button-background);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .agents-md-check-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .agents-md-check-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .agents-md-check-label {
+    font-weight: 600;
+    font-size: 11px;
+  }
+  .agents-md-check-desc {
+    font-size: 10px;
+    opacity: 0.6;
+  }
 `;

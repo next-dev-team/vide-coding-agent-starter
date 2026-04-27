@@ -1,12 +1,13 @@
 import * as vscode from "vscode";
-import { scanBoard, moveTask } from "@agent-kanban/core";
+import { scanBoard, moveTask, resolveTaskDir } from "@agent-kanban/core";
 import type { TaskStatus } from "@agent-kanban/core";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { existsSync } from "node:fs";
-import { rm } from "node:fs/promises";
-import { join } from "node:path";
+import { rm, readdir, readFile, writeFile, mkdir, copyFile } from "node:fs/promises";
+import { join, relative, basename, extname } from "node:path";
 import { getHtml, getErrorHtml } from "./webview/index.js";
+import type { SkillInfo } from "./webview/panel-skills.js";
 
 /** Provides the unified Kanban board webview in the sidebar (Tabs: Kanban, Monitor, Settings). */
 export class BoardViewProvider implements vscode.WebviewViewProvider {
@@ -18,6 +19,9 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
     private readonly extensionUri: vscode.Uri,
     private readonly workspaceRoot: string,
   ) { }
+
+  /** Cached skills list — refreshed on scan. */
+  private _skills: SkillInfo[] = [];
 
   async resolveWebviewView(
     webviewView: vscode.WebviewView,
@@ -44,13 +48,20 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
         try {
           await moveTask(this.workspaceRoot, msg.taskId as string, msg.newStatus as TaskStatus);
           this.refresh();
-        } catch (err: any) {
-          vscode.window.showErrorMessage(`Failed to move task: ${err.message}`);
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          vscode.window.showErrorMessage(`Failed to move task: ${message}`);
         }
         break;
       }
       case "openFile": {
-        const uri = vscode.Uri.file(`${this.workspaceRoot}/docs/tasks/${msg.filename}`);
+        const filename = msg.filename as string;
+        // Resolve correct directory based on task status prefix
+        const isDone = filename.startsWith("done-");
+        const dir = isDone
+          ? resolveTaskDir(this.workspaceRoot, "done")
+          : resolveTaskDir(this.workspaceRoot, "todo");
+        const uri = vscode.Uri.file(join(dir, filename));
         const doc = await vscode.workspace.openTextDocument(uri);
         await vscode.window.showTextDocument(doc);
         break;
@@ -127,6 +138,17 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
         vscode.window.showInformationMessage(
           `Memory backend: ask your agent to call memory_config_set with backend="${msg.backend}"`,
         );
+        break;
+      }
+      case "setupCompanion": {
+        const server = msg.server as string;
+        await vscode.commands.executeCommand("agentKanban.setupCompanion", server);
+        break;
+      }
+      case "initAgentsMd": {
+        const includeContext7 = msg.includeContext7 as boolean;
+        const includePlaywright = msg.includePlaywright as boolean;
+        await initAgentsMd(this.workspaceRoot, includeContext7, includePlaywright);
         break;
       }
       // ── Git automation ──────────────────────────────────────
@@ -220,6 +242,77 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
         await vscode.window.showTextDocument(doc, { preview: true });
         break;
       }
+      // ── Skills ──────────────────────────────────────────────────
+      case "initSkills":
+      case "refreshSkills": {
+        this._skills = await scanSkills(this.workspaceRoot);
+        this.refresh();
+        const count = this._skills.length;
+        vscode.window.showInformationMessage(`⚙️ Found ${count} skill${count !== 1 ? "s" : ""} in codebase.`);
+        break;
+      }
+      case "createSkill": {
+        const name = await vscode.window.showInputBox({
+          prompt: "Skill name (kebab-case)",
+          placeHolder: "my-custom-skill",
+        });
+        if (!name) break;
+        const description = await vscode.window.showInputBox({
+          prompt: "One-line description",
+          placeHolder: "What does this skill do?",
+        }) ?? "";
+        const skillDir = join(this.workspaceRoot, ".agents", "skills");
+        await mkdir(skillDir, { recursive: true });
+        const skillPath = join(skillDir, `${name}.md`);
+        const template = [
+          `# Skill: ${name.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase())}`,
+          "",
+          `${description || "Describe what this skill does and when to use it."}`,
+          "",
+          "## When to Use",
+          "",
+          "- Trigger condition 1",
+          "- Trigger condition 2",
+          "",
+          "## Instructions",
+          "",
+          "1. Step one",
+          "2. Step two",
+          "",
+        ].join("\n");
+        await writeFile(skillPath, template, "utf-8");
+        const doc = await vscode.workspace.openTextDocument(skillPath);
+        await vscode.window.showTextDocument(doc);
+        vscode.window.showInformationMessage(`✨ Created skill: ${name}.md`);
+        this._skills = await scanSkills(this.workspaceRoot);
+        this.refresh();
+        break;
+      }
+      case "importVercelSkills": {
+        const imported = await importVercelToLocal(this.workspaceRoot);
+        if (imported > 0) {
+          this._skills = await scanSkills(this.workspaceRoot);
+          this.refresh();
+          vscode.window.showInformationMessage(`▲ Imported ${imported} Vercel skill${imported !== 1 ? "s" : ""} to .agents/skills/`);
+        } else {
+          vscode.window.showInformationMessage("No Vercel v0 skill files found to import.");
+        }
+        break;
+      }
+      case "openSkill": {
+        const path = msg.path as string;
+        if (!path) break;
+        const uri = vscode.Uri.file(join(this.workspaceRoot, path));
+        const doc = await vscode.workspace.openTextDocument(uri);
+        await vscode.window.showTextDocument(doc);
+        break;
+      }
+      case "setupAgentSkills": {
+        const agent = msg.agent as string;
+        if (!agent) break;
+        await distributeSkills(this.workspaceRoot, agent);
+        break;
+      }
     }
   }
 
@@ -227,9 +320,548 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
     if (!this._view) return;
     try {
       const board = await scanBoard(this.workspaceRoot);
-      this._view.webview.html = getHtml(board);
+      this._view.webview.html = getHtml(board, this._skills);
     } catch {
       this._view.webview.html = getErrorHtml();
     }
+  }
+}
+
+// ── Skills scanner ─────────────────────────────────────────────────────────────
+
+/** YAML frontmatter pattern for SKILL.md files. */
+const FRONTMATTER_RE = /^---\s*\n([\s\S]*?)\n---/;
+
+/** Extract name/description from YAML frontmatter or heading. */
+function parseSkillMeta(content: string, filePath: string): { name: string; description: string } {
+  let name = basename(filePath, extname(filePath));
+  let description = "";
+
+  // Try YAML frontmatter first
+  const fmMatch = content.match(FRONTMATTER_RE);
+  if (fmMatch) {
+    const yaml = fmMatch[1];
+    const nameMatch = yaml.match(/^name:\s*(.+)$/m);
+    const descMatch = yaml.match(/^description:\s*(.+)$/m);
+    if (nameMatch) name = nameMatch[1].replace(/^["']|["']$/g, "").trim();
+    if (descMatch) description = descMatch[1].replace(/^["']|["']$/g, "").trim();
+  }
+
+  // Fallback: use first H1 heading as name
+  if (name === basename(filePath, extname(filePath))) {
+    const h1Match = content.match(/^#\s+(?:Skill:\s*)?(.+)$/m);
+    if (h1Match) name = h1Match[1].trim();
+  }
+
+  // Fallback: use first non-heading, non-empty line as description
+  if (!description) {
+    const lines = content.split("\n");
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith("#") && !trimmed.startsWith("---")) {
+        description = trimmed.slice(0, 120);
+        break;
+      }
+    }
+  }
+
+  return { name, description };
+}
+
+/** Recursively list .md files in a directory. */
+async function listMdFiles(dir: string): Promise<string[]> {
+  if (!existsSync(dir)) return [];
+  const results: string[] = [];
+  const entries = await readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...await listMdFiles(fullPath));
+    } else if (entry.name.endsWith(".md")) {
+      results.push(fullPath);
+    }
+  }
+  return results;
+}
+
+/** Scan the workspace for skill files across all known agent formats. */
+async function scanSkills(workspaceRoot: string): Promise<SkillInfo[]> {
+  const skills: SkillInfo[] = [];
+
+  // 1. Local skills: .agents/skills/**/*.md
+  const localDir = join(workspaceRoot, ".agents", "skills");
+  const localFiles = await listMdFiles(localDir);
+  for (const filePath of localFiles) {
+    try {
+      const content = await readFile(filePath, "utf-8");
+      const meta = parseSkillMeta(content, filePath);
+      skills.push({
+        slug: basename(filePath, ".md"),
+        name: meta.name,
+        description: meta.description,
+        format: "local",
+        path: relative(workspaceRoot, filePath).replace(/\\/g, "/"),
+        active: true,
+      });
+    } catch { /* skip unreadable files */ }
+  }
+
+  // 2. Cursor rules: .cursor/rules/**/*.md or .cursorrules
+  const cursorDir = join(workspaceRoot, ".cursor", "rules");
+  const cursorFiles = await listMdFiles(cursorDir);
+  for (const filePath of cursorFiles) {
+    try {
+      const content = await readFile(filePath, "utf-8");
+      const meta = parseSkillMeta(content, filePath);
+      skills.push({
+        slug: `cursor-${basename(filePath, ".md")}`,
+        name: meta.name,
+        description: meta.description,
+        format: "cursor",
+        path: relative(workspaceRoot, filePath).replace(/\\/g, "/"),
+        active: true,
+      });
+    } catch { /* skip */ }
+  }
+  // Legacy .cursorrules file
+  const cursorRulesPath = join(workspaceRoot, ".cursorrules");
+  if (existsSync(cursorRulesPath)) {
+    try {
+      const content = await readFile(cursorRulesPath, "utf-8");
+      skills.push({
+        slug: "cursorrules",
+        name: "Cursor Rules",
+        description: content.slice(0, 120).replace(/\n/g, " ").trim(),
+        format: "cursor",
+        path: ".cursorrules",
+        active: true,
+      });
+    } catch { /* skip */ }
+  }
+
+  // 3. Copilot: .github/copilot-instructions.md
+  const copilotPath = join(workspaceRoot, ".github", "copilot-instructions.md");
+  if (existsSync(copilotPath)) {
+    try {
+      const content = await readFile(copilotPath, "utf-8");
+      const meta = parseSkillMeta(content, copilotPath);
+      skills.push({
+        slug: "copilot-instructions",
+        name: meta.name || "Copilot Instructions",
+        description: meta.description,
+        format: "copilot",
+        path: ".github/copilot-instructions.md",
+        active: true,
+      });
+    } catch { /* skip */ }
+  }
+
+  // 4. Claude: .claude/ or CLAUDE.md
+  const claudeMdPath = join(workspaceRoot, "CLAUDE.md");
+  if (existsSync(claudeMdPath)) {
+    try {
+      const content = await readFile(claudeMdPath, "utf-8");
+      skills.push({
+        slug: "claude-md",
+        name: "Claude Config",
+        description: content.slice(0, 120).replace(/\n/g, " ").trim(),
+        format: "claude",
+        path: "CLAUDE.md",
+        active: true,
+      });
+    } catch { /* skip */ }
+  }
+
+  // 5. Vercel v0: .v0/**/*.md or v0-*.md
+  const v0Dir = join(workspaceRoot, ".v0");
+  const v0Files = await listMdFiles(v0Dir);
+  for (const filePath of v0Files) {
+    try {
+      const content = await readFile(filePath, "utf-8");
+      const meta = parseSkillMeta(content, filePath);
+      skills.push({
+        slug: `v0-${basename(filePath, ".md")}`,
+        name: meta.name,
+        description: meta.description,
+        format: "vercel",
+        path: relative(workspaceRoot, filePath).replace(/\\/g, "/"),
+        active: true,
+      });
+    } catch { /* skip */ }
+  }
+
+  return skills;
+}
+
+/** Import Vercel v0 skills to local .agents/skills/ format. */
+async function importVercelToLocal(workspaceRoot: string): Promise<number> {
+  const v0Dir = join(workspaceRoot, ".v0");
+  if (!existsSync(v0Dir)) return 0;
+
+  const v0Files = await listMdFiles(v0Dir);
+  if (v0Files.length === 0) return 0;
+
+  const skillDir = join(workspaceRoot, ".agents", "skills");
+  await mkdir(skillDir, { recursive: true });
+
+  let count = 0;
+  for (const filePath of v0Files) {
+    const destName = `v0-${basename(filePath)}`;
+    const destPath = join(skillDir, destName);
+    if (!existsSync(destPath)) {
+      await copyFile(filePath, destPath);
+      count++;
+    }
+  }
+  return count;
+}
+
+/** Distribute local skills to a target agent's config directory. */
+async function distributeSkills(workspaceRoot: string, agent: string): Promise<void> {
+  const localDir = join(workspaceRoot, ".agents", "skills");
+  if (!existsSync(localDir)) {
+    vscode.window.showWarningMessage("No local skills found. Run 'Init from Codebase' first.");
+    return;
+  }
+
+  const localFiles = await listMdFiles(localDir);
+  if (localFiles.length === 0) {
+    vscode.window.showWarningMessage("No local skills found in .agents/skills/.");
+    return;
+  }
+
+  let targetDir: string;
+  let infoMessage: string;
+
+  switch (agent) {
+    case "local":
+      vscode.window.showInformationMessage(`📁 ${localFiles.length} skill(s) already in .agents/skills/`);
+      return;
+    case "cursor": {
+      targetDir = join(workspaceRoot, ".cursor", "rules");
+      infoMessage = ".cursor/rules/";
+      break;
+    }
+    case "copilot": {
+      // Copilot uses a single instructions file — concatenate all skills
+      const destPath = join(workspaceRoot, ".github", "copilot-instructions.md");
+      await mkdir(join(workspaceRoot, ".github"), { recursive: true });
+      const parts: string[] = ["# Agent Skills\n"];
+      for (const filePath of localFiles) {
+        try {
+          const content = await readFile(filePath, "utf-8");
+          parts.push(`\n---\n\n${content}`);
+        } catch { /* skip */ }
+      }
+      await writeFile(destPath, parts.join("\n"), "utf-8");
+      vscode.window.showInformationMessage(`💎 Exported ${localFiles.length} skill(s) → .github/copilot-instructions.md`);
+      return;
+    }
+    case "claude": {
+      // Claude uses CLAUDE.md — concatenate all skills
+      const destPath = join(workspaceRoot, "CLAUDE.md");
+      const parts: string[] = ["# Agent Skills\n"];
+      for (const filePath of localFiles) {
+        try {
+          const content = await readFile(filePath, "utf-8");
+          parts.push(`\n---\n\n${content}`);
+        } catch { /* skip */ }
+      }
+      await writeFile(destPath, parts.join("\n"), "utf-8");
+      vscode.window.showInformationMessage(`🤖 Exported ${localFiles.length} skill(s) → CLAUDE.md`);
+      return;
+    }
+    case "antigravity": {
+      const homeDir = process.env.USERPROFILE || process.env.HOME || "";
+      targetDir = join(homeDir, ".gemini", "antigravity", "skills");
+      infoMessage = "~/.gemini/antigravity/skills/";
+      break;
+    }
+    case "vercel": {
+      targetDir = join(workspaceRoot, ".v0");
+      infoMessage = ".v0/";
+      break;
+    }
+    default:
+      vscode.window.showErrorMessage(`Unknown agent target: ${agent}`);
+      return;
+  }
+
+  // Copy files for directory-based agents
+  await mkdir(targetDir, { recursive: true });
+  let count = 0;
+  for (const filePath of localFiles) {
+    const destPath = join(targetDir, basename(filePath));
+    await copyFile(filePath, destPath);
+    count++;
+  }
+  vscode.window.showInformationMessage(`📦 Distributed ${count} skill(s) → ${infoMessage}`);
+}
+
+// ── AGENTS.md Generator ──────────────────────────────────────────────────────
+
+/** Detect package manager from lockfiles. */
+function detectPackageManager(root: string): string {
+  if (existsSync(join(root, "pnpm-lock.yaml"))) return "pnpm";
+  if (existsSync(join(root, "yarn.lock"))) return "yarn";
+  if (existsSync(join(root, "bun.lockb"))) return "bun";
+  return "npm";
+}
+
+/** Read JSON file safely. */
+async function readJsonSafe(filePath: string): Promise<Record<string, unknown> | null> {
+  try {
+    const raw = await readFile(filePath, "utf-8");
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/** Build compact tree of top-level entries. */
+async function buildTopTree(root: string): Promise<string[]> {
+  const lines: string[] = [basename(root) + "/"];
+  try {
+    const entries = await readdir(root, { withFileTypes: true });
+    const filtered = entries
+      .filter(e => !e.name.startsWith(".") || e.name === ".agents")
+      .filter(e => !["node_modules", "dist", ".git"].includes(e.name))
+      .sort((a, b) => {
+        if (a.isDirectory() !== b.isDirectory()) return a.isDirectory() ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+    for (let i = 0; i < filtered.length; i++) {
+      const e = filtered[i];
+      const connector = i === filtered.length - 1 ? "└── " : "├── ";
+      lines.push(`${connector}${e.name}${e.isDirectory() ? "/" : ""}`);
+    }
+  } catch { /* skip */ }
+  return lines;
+}
+
+
+/**
+ * Generate AGENTS.md in the workspace root.
+ * Scans the project context and optionally includes
+ * Context7 and Playwright companion server documentation.
+ */
+async function initAgentsMd(
+  workspaceRoot: string,
+  includeContext7: boolean,
+  includePlaywright: boolean,
+): Promise<void> {
+  try {
+    const pkg = (await readJsonSafe(join(workspaceRoot, "package.json"))) ?? {};
+    const scripts = (pkg.scripts as Record<string, string>) ?? {};
+    const pm = detectPackageManager(workspaceRoot);
+    const name = (pkg.name as string) ?? basename(workspaceRoot);
+    const desc = (pkg.description as string) ?? "";
+
+    // Detect basics
+    const isMonorepo = existsSync(join(workspaceRoot, "pnpm-workspace.yaml"))
+      || Boolean(pkg.workspaces);
+    const hasTs = existsSync(join(workspaceRoot, "tsconfig.json"));
+    const hasDocsDir = existsSync(join(workspaceRoot, "docs"));
+    const hasAgentsDir = existsSync(join(workspaceRoot, ".agents"));
+
+    // Detect packages in monorepo
+    const packages: Array<{ name: string; path: string; desc: string }> = [];
+    if (isMonorepo && existsSync(join(workspaceRoot, "packages"))) {
+      const entries = await readdir(join(workspaceRoot, "packages"));
+      for (const entry of entries) {
+        const subPkg = await readJsonSafe(join(workspaceRoot, "packages", entry, "package.json"));
+        if (subPkg) {
+          packages.push({
+            name: (subPkg.name as string) ?? entry,
+            path: `packages/${entry}`,
+            desc: (subPkg.description as string) ?? "",
+          });
+        }
+      }
+    }
+
+    // Build tree
+    const tree = await buildTopTree(workspaceRoot);
+
+    // ── Compose AGENTS.md ──
+    const lines: string[] = [];
+
+    lines.push("# AGENTS.md", "");
+    lines.push("Instructions for AI coding agents working in this repo.", "");
+
+    // Project
+    lines.push("## Project", "");
+    lines.push(`**${name}**${desc ? ` — ${desc}` : ""}`, "");
+    if (packages.length > 0) {
+      lines.push(`This is a ${pm} monorepo with ${packages.length} packages:`, "");
+      for (const p of packages) {
+        lines.push(`- **\`${p.name}\`** (${p.path})${p.desc ? ` — ${p.desc}` : ""}`);
+      }
+      lines.push("");
+    }
+
+    // Tech Stack
+    lines.push("## Tech Stack", "");
+    lines.push("| Layer | Choice |");
+    lines.push("| ----- | ------ |");
+    lines.push(`| Language | ${hasTs ? "TypeScript" : "JavaScript"} |`);
+    lines.push(`| Package Manager | ${pm}${isMonorepo ? " (monorepo)" : ""} |`);
+    lines.push("");
+    lines.push("Do **not** add new packages without asking. Propose with a one-line reason first.", "");
+
+    // Commands
+    if (Object.keys(scripts).length > 0) {
+      lines.push("## Commands", "");
+      lines.push("| Task | Command |");
+      lines.push("| ---- | ------- |");
+      lines.push(`| Install deps | \`${pm} install\` |`);
+      for (const s of ["build", "dev", "test", "lint", "typecheck", "clean", "start"]) {
+        if (scripts[s]) lines.push(`| ${s.charAt(0).toUpperCase() + s.slice(1)} | \`${pm} ${s}\` |`);
+      }
+      lines.push("");
+      lines.push(`Always run \`${pm} build\` and \`${pm} test\` before saying a task is done.`, "");
+    }
+
+    // Structure
+    lines.push("## Project Structure", "");
+    lines.push("```");
+    for (const line of tree) lines.push(line);
+    lines.push("```", "");
+
+    // Coding Conventions
+    lines.push("## Coding Conventions", "");
+    if (hasTs) {
+      lines.push("- **File names**: `kebab-case.ts`. Class names: `PascalCase`. Variables: `camelCase`.");
+      lines.push("- **Imports**: `node:` prefix for builtins. Package imports first, then relative.");
+      lines.push("- **Type-only imports**: use `import type { ... }` when importing only types.");
+      lines.push("- **No `any`** — use proper TypeScript types.");
+    } else {
+      lines.push("- **File names**: `kebab-case.js`. Variables: `camelCase`.");
+    }
+    lines.push("- **Functions over classes** when there's no internal state.");
+    lines.push("- **No `console.log`** in library code — return structured data.", "");
+
+    // Workflow
+    if (hasDocsDir || hasAgentsDir) {
+      lines.push("## Workflow", "");
+      if (hasAgentsDir) {
+        lines.push("When the user gives you a **PRD** or **task file**, follow the loop in `.agents/workflows/feature-loop.md`.", "");
+        lines.push("When making a **non-trivial architectural choice**, write an ADR using `.agents/templates/adr.md`.", "");
+        lines.push("When the user describes a **new feature in chat without a PRD**, offer to draft one first.", "");
+      }
+      if (hasDocsDir) {
+        lines.push("Task files in `docs/tasks/` use a status prefix in the filename:", "");
+        lines.push("| Prefix | Meaning |");
+        lines.push("| ------ | ------- |");
+        lines.push("| `todo-` | Not started |");
+        lines.push("| `wip-` | In progress |");
+        lines.push("| `done-` | Completed |");
+        lines.push("| `blocked-` | Blocked, see Notes section |");
+        lines.push("");
+        lines.push("Rename the file to update status — don't edit a status field inside.", "");
+      }
+    }
+
+    // MCP Companion Servers
+    if (includeContext7 || includePlaywright) {
+      lines.push("## MCP Companion Servers", "");
+      lines.push("This project relies on multiple MCP servers working together. Configure them in your IDE's MCP settings:", "");
+      lines.push("| Server | Purpose | When to use |");
+      lines.push("|--------|---------|-------------|");
+      lines.push("| **agent-kanban** | Task management, memory, PRDs, ADRs | Always — core workflow orchestration |");
+      if (includeContext7) lines.push("| **context7** | Live documentation lookup | Before using any library API, framework feature, or CLI tool |");
+      if (includePlaywright) lines.push("| **playwright** | Browser automation & testing | UI verification, E2E testing, visual regression |");
+      lines.push("");
+
+      if (includeContext7) {
+        lines.push(
+          "### Context7 — Documentation-First Development", "",
+          "**Always use Context7 before writing code that touches a library or framework** — even well-known ones. Your training data may be stale; Context7 fetches the latest docs.", "",
+          "**Workflow:**",
+          "1. Call `resolve-library-id` to find the Context7 library ID",
+          "2. Call `query-docs` with the resolved ID and your specific question",
+          "3. If the first answer is insufficient, retry with `researchMode: true`", "",
+          "**When to use:**",
+          "- API syntax or configuration for any dependency",
+          "- Version migration or breaking change checks",
+          "- Library-specific debugging or setup instructions",
+          "- CLI tool usage patterns", "",
+        );
+      }
+
+      if (includePlaywright) {
+        lines.push(
+          "### Playwright — Browser Automation & Testing", "",
+          "**Use Playwright for any task that requires interacting with or verifying a running web application.**", "",
+          "**When to use:**",
+          "- Verifying UI renders correctly after changes",
+          "- E2E testing of web-based features",
+          "- Taking screenshots for visual comparison",
+          "- Filling forms, clicking buttons, navigating pages", "",
+          "**Rule:** When acceptance criteria include UI behavior, use Playwright to verify before marking done.", "",
+        );
+      }
+    }
+
+    // What to Ask vs Assume
+    lines.push("## What to Ask vs Assume", "");
+    lines.push("**Ask the user before:**", "");
+    lines.push("- Adding any new dependency");
+    if (isMonorepo) lines.push("- Changing the monorepo structure");
+    lines.push("- Deleting files");
+    lines.push("- Adding external API calls");
+    lines.push("- Starting a non-trivial task without a PRD");
+    lines.push("");
+    lines.push("**Assume and proceed when:**", "");
+    lines.push("- Creating new modules/functions that follow existing patterns");
+    lines.push("- Writing tests for new code");
+    lines.push("- Fixing lint warnings or type errors");
+    lines.push("- Adding JSDoc comments");
+    lines.push("- Renaming a task file to update its status");
+    if (includeContext7) lines.push("- Using Context7 to look up library documentation");
+    if (includePlaywright) lines.push("- Using Playwright to verify UI changes");
+    lines.push("");
+
+    // Skills & References
+    if (hasAgentsDir) {
+      lines.push("## Skills & References", "");
+      lines.push("| Task involves... | Read / Use |");
+      lines.push("| ---------------- | ---------- |");
+      lines.push("| Working from a PRD or task | `.agents/workflows/feature-loop.md` |");
+      lines.push("| Writing a PRD | `.agents/templates/prd.md` |");
+      lines.push("| Writing a task | `.agents/templates/task.md` |");
+      lines.push("| Logging a decision | `.agents/templates/adr.md` |");
+      if (includeContext7) lines.push("| Looking up library/framework docs | Context7 MCP → `resolve-library-id` then `query-docs` |");
+      if (includePlaywright) lines.push("| Verifying UI or running E2E tests | Playwright MCP → `navigate`, `screenshot`, `click`, `fill` |");
+      lines.push("");
+    }
+
+    // Definition of Done
+    lines.push("## Definition of Done", "");
+    lines.push("A task is done when:", "");
+    let n = 1;
+    lines.push(`${n++}. Code compiles (\`${pm} build\` clean)`);
+    lines.push(`${n++}. Tests pass (\`${pm} test\`)`);
+    lines.push(`${n++}. New behavior has at least one test`);
+    if (hasTs) lines.push(`${n++}. No new TypeScript errors`);
+    lines.push(`${n++}. Public APIs have a one-line JSDoc (\`/** ... */\`)`);
+    if (hasDocsDir) lines.push(`${n++}. Task file renamed to \`done-*.md\``);
+    lines.push("");
+
+    // Write
+    const agentsPath = join(workspaceRoot, "AGENTS.md");
+    await writeFile(agentsPath, lines.join("\n"), "utf-8");
+
+    const doc = await vscode.workspace.openTextDocument(agentsPath);
+    await vscode.window.showTextDocument(doc);
+
+    const companions: string[] = [];
+    if (includeContext7) companions.push("Context7");
+    if (includePlaywright) companions.push("Playwright");
+    const companionNote = companions.length > 0 ? ` (with ${companions.join(" + ")})` : "";
+    vscode.window.showInformationMessage(`✅ AGENTS.md created${companionNote}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    vscode.window.showErrorMessage(`Failed to generate AGENTS.md: ${message}`);
   }
 }
