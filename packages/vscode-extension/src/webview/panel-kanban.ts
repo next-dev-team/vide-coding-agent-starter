@@ -1,4 +1,4 @@
-import type { Board } from "@agent-kanban/core";
+import type { Board, Task } from "@agent-kanban/core";
 
 function escapeHtml(text: string): string {
   return text
@@ -104,5 +104,94 @@ export function renderWorkflowPanel(): string {
   </div>
   <div class="section-body" style="padding-top:10px">
     ${renderWorkflowTools()}
+  </div>`;
+}
+
+/** Renders a flat table of ALL tasks across all statuses. */
+export function renderTablePanel(board: Board): string {
+  const allStatuses = ["todo", "wip", "blocked", "done"] as const;
+  const statusEmoji: Record<string, string> = { todo: "🔵", wip: "🟡", blocked: "🔴", done: "🟢" };
+  const statusColor: Record<string, string> = {
+    todo: "var(--vscode-charts-blue)",
+    wip: "var(--vscode-charts-yellow)",
+    blocked: "var(--vscode-charts-red)",
+    done: "var(--vscode-charts-green)",
+  };
+
+  const allTasks: Task[] = [];
+  for (const s of allStatuses) {
+    const col = board.columns.find(c => c.status === s);
+    if (col) allTasks.push(...col.tasks);
+  }
+
+  const totalByStatus = allStatuses.map(s => {
+    const col = board.columns.find(c => c.status === s);
+    return { s, count: col ? col.tasks.length : 0 };
+  });
+
+  const summaryRow = totalByStatus.map(({ s, count }) =>
+    `<span class="tbl-badge" style="background:${statusColor[s]};color:#fff">${statusEmoji[s]} ${s.toUpperCase()} <b>${count}</b></span>`
+  ).join("");
+
+  if (allTasks.length === 0) {
+    return `
+    <div class="header">
+      <h2>All Tasks</h2>
+      <button class="btn-refresh" onclick="refresh()" title="Refresh">↻</button>
+    </div>
+    <div class="empty">No tasks found — add a file to docs/tasks/</div>`;
+  }
+
+  const rows = allTasks.map(task => {
+    const total = task.acceptance.length;
+    const checked = task.acceptance.filter(a => a.checked).length;
+    const pct = total > 0 ? Math.round((checked / total) * 100) : -1;
+    const moveTargets = (["todo", "wip", "blocked", "done"] as const).filter(s => s !== task.status);
+    return `
+    <tr class="tbl-row" data-status="${task.status}" onclick="openFile('${task.filename}')">
+      <td class="tbl-status">
+        <span class="tbl-dot" style="background:${statusColor[task.status]}" title="${task.status}"></span>
+        <span class="tbl-status-label">${task.status.toUpperCase()}</span>
+      </td>
+      <td class="tbl-id"><code>#${escapeHtml(task.id)}</code></td>
+      <td class="tbl-goal">${escapeHtml(task.goal || task.slug.replace(/-/g, " "))}</td>
+      <td class="tbl-progress" onclick="event.stopPropagation()">
+        ${pct >= 0
+          ? `<div style="display:flex;align-items:center;gap:4px">
+               <div class="progress-bar" style="min-width:48px"><div class="progress-fill" style="width:${pct}%"></div></div>
+               <span style="font-size:10px;opacity:0.65;white-space:nowrap">${checked}/${total}</span>
+             </div>`
+          : `<span style="font-size:10px;opacity:0.35">—</span>`
+        }
+      </td>
+      <td class="tbl-actions" onclick="event.stopPropagation()">
+        <div style="display:flex;gap:3px;flex-wrap:wrap">
+          ${moveTargets.map(s =>
+            `<button class="tbl-move" onclick="moveTask('${task.id}','${s}')" title="Move to ${s}">${statusEmoji[s]}</button>`
+          ).join("")}
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+
+  return `
+  <div class="header">
+    <h2>All Tasks</h2>
+    <button class="btn-refresh" onclick="refresh()" title="Refresh">↻</button>
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${summaryRow}</div>
+  <div style="overflow-x:auto">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th class="tbl-th">Status</th>
+          <th class="tbl-th">ID</th>
+          <th class="tbl-th" style="width:99%">Goal</th>
+          <th class="tbl-th">Progress</th>
+          <th class="tbl-th">Move</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
   </div>`;
 }

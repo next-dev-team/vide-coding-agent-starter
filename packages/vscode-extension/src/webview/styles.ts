@@ -235,4 +235,55 @@ export const styles = /*css*/ `
     text-align: center; padding: 20px 0;
     border-radius: 4px; border: 1px dashed var(--vscode-panel-border);
   }
+
+  /* ── Task table ───────────────────────────────────────────── */
+  .tbl-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 700; padding: 3px 8px;
+    border-radius: 10px; opacity: 0.9;
+  }
+  .tbl {
+    width: 100%; border-collapse: collapse; font-size: 12px;
+    table-layout: auto;
+  }
+  .tbl-th {
+    text-align: left; font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 6px 8px; border-bottom: 2px solid var(--vscode-panel-border);
+    opacity: 0.6; white-space: nowrap;
+  }
+  .tbl-row {
+    cursor: pointer;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    transition: background 0.12s;
+  }
+  .tbl-row:hover { background: var(--vscode-list-hoverBackground); }
+  .tbl-row td { padding: 7px 8px; vertical-align: middle; }
+  .tbl-status {
+    display: flex !important; align-items: center; gap: 5px;
+    white-space: nowrap;
+  }
+  .tbl-dot {
+    display: inline-block; width: 8px; height: 8px;
+    border-radius: 50%; flex-shrink: 0;
+  }
+  .tbl-status-label {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.4px; opacity: 0.75;
+  }
+  .tbl-id code {
+    font-family: var(--vscode-editor-font-family);
+    font-size: 10px; opacity: 0.6;
+    background: var(--vscode-editorWidget-background);
+    padding: 2px 5px; border-radius: 3px;
+  }
+  .tbl-goal { line-height: 1.4; }
+  .tbl-progress { white-space: nowrap; }
+  .tbl-actions { white-space: nowrap; }
+  .tbl-move {
+    background: none; border: 1px solid var(--vscode-panel-border);
+    border-radius: 4px; cursor: pointer; font-size: 13px;
+    padding: 2px 4px; transition: background 0.1s;
+    line-height: 1;
+  }
+  .tbl-move:hover { background: var(--vscode-button-secondaryBackground); }
 `;

@@ -1,6 +1,6 @@
 import type { Board } from "@agent-kanban/core";
 import { styles } from "./styles.js";
-import { renderKanbanPanel, renderColumnPanel, renderWorkflowPanel } from "./panel-kanban.js";
+import { renderKanbanPanel, renderTablePanel } from "./panel-kanban.js";
 import { renderMonitorPanel } from "./panel-monitor.js";
 import { renderSettingsPanel } from "./panel-settings.js";
 
@@ -108,7 +108,7 @@ const FULL_SCRIPTS = /*js*/ `
 
 /**
  * Builds the full single-webview HTML with a horizontal tab bar at the top.
- * Tabs: 📋 Kanban | 🔍 Monitor | ⚙️ Settings
+ * Tabs: 📋 Kanban | 📊 Table | 🔍 Memory | ⚙️ Settings
  */
 export function getHtml(board: Board): string {
   return /*html*/ `<!DOCTYPE html>
@@ -120,13 +120,9 @@ export function getHtml(board: Board): string {
 </head>
 <body>
   <!-- Horizontal tab bar -->
-  <div class="tab-bar" style="overflow-x: auto; white-space: nowrap; padding-bottom: 2px;">
+  <div class="tab-bar">
     <button class="tab-btn active" id="tab-kanban" onclick="switchTab('kanban')">📋 Kanban</button>
-    <button class="tab-btn" id="tab-todo" onclick="switchTab('todo')">🔵 Todo</button>
-    <button class="tab-btn" id="tab-wip" onclick="switchTab('wip')">🟡 WIP</button>
-    <button class="tab-btn" id="tab-blocked" onclick="switchTab('blocked')">🔴 Blocked</button>
-    <button class="tab-btn" id="tab-done" onclick="switchTab('done')">🟢 Done</button>
-    <button class="tab-btn" id="tab-workflow" onclick="switchTab('workflow')">⚡ Workflow</button>
+    <button class="tab-btn" id="tab-table" onclick="switchTab('table')">📊 Table</button>
     <button class="tab-btn" id="tab-monitor" onclick="switchTab('monitor')">🔍 Memory <span id="tab-monitor-badge" style="display:none;background:var(--vscode-badge-background);color:var(--vscode-badge-foreground);font-size:9px;padding:1px 5px;border-radius:8px;margin-left:2px"></span></button>
     <button class="tab-btn" id="tab-settings" onclick="switchTab('settings')">⚙️ Settings</button>
   </div>
@@ -135,24 +131,8 @@ export function getHtml(board: Board): string {
     ${renderKanbanPanel(board)}
   </div>
 
-  <div class="tab-panel" id="panel-todo">
-    ${renderColumnPanel(board, 'todo')}
-  </div>
-
-  <div class="tab-panel" id="panel-wip">
-    ${renderColumnPanel(board, 'wip')}
-  </div>
-
-  <div class="tab-panel" id="panel-blocked">
-    ${renderColumnPanel(board, 'blocked')}
-  </div>
-
-  <div class="tab-panel" id="panel-done">
-    ${renderColumnPanel(board, 'done')}
-  </div>
-
-  <div class="tab-panel" id="panel-workflow">
-    ${renderWorkflowPanel()}
+  <div class="tab-panel" id="panel-table">
+    ${renderTablePanel(board)}
   </div>
 
   <div class="tab-panel" id="panel-monitor">
