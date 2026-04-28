@@ -10,13 +10,13 @@ Set up the pnpm monorepo with all 4 packages, 3 starter templates, and build inf
 ## Acceptance Criteria
 
 - [x] pnpm workspace with `packages/*`
-- [x] `@agent-kanban/core` — parser, writer, scanner, types
+- [ ] `@agent-kanban/core` — parser, writer, scanner, types
 - [x] `create-kanban-app` CLI — init, --list, doctor
 - [x] `@agent-kanban/mcp-server` — 9 tools, 4 resources, stdio
 - [x] `agent-kanban-vscode` — Kanban board webview, status bar, file watcher
 - [x] `templates/shared/` — generic .agents + docs
 - [x] `templates/todo-vite-react/` — working React todo app
-- [x] `templates/todo-flutter/` — placeholder with Flutter skills
+- [ ] `templates/todo-flutter/` — placeholder with Flutter skills
 - [x] `templates/blank/` — docs-only scaffold
 - [x] `pnpm build` compiles all packages
 - [x] CLI --list shows 3 templates

@@ -9,6 +9,8 @@
   function planFeature() { vscode.postMessage({ type: "planFeature" }); }
   function requestReview(type: string) { vscode.postMessage({ type: "requestReview", reviewType: type }); }
   function syncDocs() { vscode.postMessage({ type: "syncDocs" }); }
+  function syncAll() { vscode.postMessage({ type: "syncAll" }); }
+  function runAllTasks() { vscode.postMessage({ type: "startFeatureLoopAll" }); }
   function initAgentsMd() {
     vscode.postMessage({ type: "initAgentsMd", includeContext7, includePlaywright });
   }
@@ -37,6 +39,22 @@
       <div class="wf-action-body">
         <span class="wf-action-label">Sync Docs</span>
         <span class="wf-action-desc">Reconcile docs with codebase</span>
+      </div>
+      <span class="wf-action-arrow">→</span>
+    </button>
+    <button class="wf-action primary" onclick={syncAll}>
+      <div class="wf-action-icon">🔍</div>
+      <div class="wf-action-body">
+        <span class="wf-action-label">Sync All + Review</span>
+        <span class="wf-action-desc">Audit PRDs, tasks, code, docs, memory</span>
+      </div>
+      <span class="wf-action-arrow">→</span>
+    </button>
+    <button class="wf-action primary" onclick={runAllTasks}>
+      <div class="wf-action-icon">🚀</div>
+      <div class="wf-action-body">
+        <span class="wf-action-label">Run All Tasks</span>
+        <span class="wf-action-desc">Batch feature loop for all TODO tasks</span>
       </div>
       <span class="wf-action-arrow">→</span>
     </button>

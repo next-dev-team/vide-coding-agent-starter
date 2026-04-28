@@ -37,13 +37,14 @@ import {
   worktreeCleanupTool, handleWorktreeCleanup,
 } from "./worktree.js";
 import { prCreateTool, handlePrCreate } from "./pr-create.js";
-import { featureLoopTool, handleFeatureLoop } from "./feature-loop.js";
+import { featureLoopTool, handleFeatureLoop, featureLoopAllTool, handleFeatureLoopAll } from "./feature-loop.js";
 import { agentsGenerateTool, handleAgentsGenerate } from "./agents-generate.js";
 // ── New tools (OMX-inspired) ─────────────────────────────────
 import { intentInterviewTool, handleIntentInterview } from "./intent-interview.js";
 import { driftCheckTool, handleDriftCheck } from "./drift-check.js";
 import { hooksListTool, hooksInitTool, handleHooksList, handleHooksInit, getTransitionHookContent } from "./hooks.js";
 import { docsSyncTool, handleDocsSync } from "./docs-sync.js";
+import { projectSyncAllTool, handleProjectSyncAll } from "./project-sync.js";
 
 /** Resolve project path — defaults to cwd. */
 function resolveProjectPath(args: Record<string, unknown>): string {
@@ -211,6 +212,7 @@ export function registerTools() {
     worktreeCleanupTool,
     prCreateTool,
     featureLoopTool,
+    featureLoopAllTool,
     // ─── Project context tools ───────────────────────────────
     agentsGenerateTool,
     // ─── OMX-inspired tools ──────────────────────────────────
@@ -219,6 +221,7 @@ export function registerTools() {
     hooksListTool,
     hooksInitTool,
     docsSyncTool,
+    projectSyncAllTool,
   ];
 }
 
@@ -452,6 +455,11 @@ export async function handleToolCall(
         break;
       }
 
+      case "feature_loop_all": {
+        result = await handleFeatureLoopAll(args);
+        break;
+      }
+
       case "agents_generate": {
         result = await handleAgentsGenerate(args);
         break;
@@ -480,6 +488,11 @@ export async function handleToolCall(
 
       case "docs_sync": {
         result = await handleDocsSync(args);
+        break;
+      }
+
+      case "project_sync_all": {
+        result = await handleProjectSyncAll(args);
         break;
       }
 

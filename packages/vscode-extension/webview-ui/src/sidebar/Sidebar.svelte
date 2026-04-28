@@ -10,6 +10,9 @@
   import WorkflowTab from "./tabs/WorkflowTab.svelte";
   import McpTab from "./tabs/McpTab.svelte";
   import KnowledgeTab from "./tabs/KnowledgeTab.svelte";
+  import BrowserTab from "./tabs/BrowserTab.svelte";
+  import InitTab from "./tabs/InitTab.svelte";
+  import I18nTab from "./tabs/I18nTab.svelte";
 
   const vscode = getVsCode<{ activeTab: string }>();
 
@@ -17,6 +20,7 @@
   let docs = $state<DocsData>({ prds: [], adrs: [], tasks: [] });
   let skills = $state<SkillInfo[]>([]);
   let knowledge = $state<any>({ brainContent: "", brainExists: false, memories: [], categories: {}, totalMemories: 0 });
+  let version = $state<string>("");
 
   let activeTab = $state<string>(vscode.getState()?.activeTab || "kanban");
 
@@ -25,8 +29,11 @@
     { id: "docs",   icon: "📄", label: "Docs" },
     { id: "skills", icon: "⚙️", label: "Skills" },
     { id: "workflow", icon: "🚀", label: "Agent" },
+    { id: "init",   icon: "✨", label: "Init" },
+    { id: "i18n",   icon: "🌍", label: "i18n" },
     { id: "mcp",    icon: "🔌", label: "MCP" },
     { id: "knowledge", icon: "🧠", label: "Know" },
+    { id: "browser", icon: "🌐", label: "Web" },
   ] as const;
 
   function switchTab(tab: string) {
@@ -57,6 +64,7 @@
         if (msg.docs) docs = msg.docs;
         if (msg.skills) skills = msg.skills;
         if (msg.knowledge) knowledge = msg.knowledge;
+        if (msg.version) version = msg.version;
       }
     });
   });
@@ -100,12 +108,26 @@
       <SkillsTab {skills} />
     {:else if activeTab === "workflow"}
       <WorkflowTab />
+    {:else if activeTab === "init"}
+      <InitTab />
+    {:else if activeTab === "i18n"}
+      <I18nTab />
     {:else if activeTab === "mcp"}
       <McpTab />
     {:else if activeTab === "knowledge"}
       <KnowledgeTab {knowledge} />
+    {:else if activeTab === "browser"}
+      <BrowserTab />
     {/if}
   </div>
+
+  <!-- ── Version Footer ─────────────────────────────────────── -->
+  {#if version}
+    <div class="version-bar">
+      <span class="version-label">Agent Kanban</span>
+      <span class="version-tag">v{version}</span>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -130,6 +152,7 @@
     border: none;
     background: none;
     color: var(--color-muted-foreground);
+    opacity: 0.65;
     cursor: pointer;
     transition: all 0.15s ease;
     font-family: inherit;
@@ -137,9 +160,12 @@
   .tab-item:hover {
     background: var(--color-accent);
     color: var(--color-foreground);
+    opacity: 0.85;
   }
   .tab-item.active {
     color: var(--color-foreground);
+    opacity: 1;
+    background: color-mix(in srgb, var(--color-accent) 50%, transparent);
   }
 
   .tab-icon {
@@ -198,5 +224,36 @@
   .tab-refresh:hover {
     background: var(--color-accent);
     color: var(--color-foreground);
+  }
+
+  .version-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-top: 1px solid var(--color-border);
+    background: color-mix(in srgb, var(--color-muted) 30%, transparent);
+    font-size: 10px;
+    color: var(--color-muted-foreground);
+    opacity: 0.7;
+    transition: opacity 0.15s ease;
+    flex-shrink: 0;
+  }
+  .version-bar:hover {
+    opacity: 1;
+  }
+  .version-label {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .version-tag {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+    color: var(--color-primary);
+    font-weight: 700;
+    font-size: 9px;
+    letter-spacing: 0.04em;
   }
 </style>

@@ -18,6 +18,32 @@ The process for turning an idea into shipped code with an AI agent.
                             └──────────┘
 ```
 
+## MCP Tools
+
+| Tool | What it does |
+|------|-------------|
+| `feature_loop` | Generate a plan for **one task** — returns step-by-step orchestration sequence |
+| `feature_loop_all` | Generate a plan for **all pending tasks** — returns batch plan with execution order, PRD coverage, and post-batch sync steps |
+
+## feature_loop_all — Batch Mode
+
+When called with no arguments, `feature_loop_all` scans the board and builds a plan for every `todo` task. Options:
+
+| Param | Default | Description |
+|-------|---------|-------------|
+| `include_wip` | `false` | Also resume in-progress tasks |
+| `include_done` | `false` | Run compound learnings on done tasks |
+| `prd_filter` | — | Only tasks linked to a specific PRD |
+| `skip_worktree` | `false` | Skip git worktree creation for all tasks |
+
+**Execution order:** WIP tasks first (resume), then TODO by ID.
+
+**Post-batch steps** (auto-included):
+1. `docs_sync` — Reconcile PRDs/tasks with code
+2. `memory_brain_sync` — Regenerate PROJECT_BRAIN.md
+3. `agents_generate` — Rebuild AGENTS.md
+4. `memory_dedupe` — Clean up duplicate memories
+
 ## Step 1 — PRD (Product Requirements Document)
 
 **Purpose:** capture *what* and *why*, never *how*.
@@ -60,11 +86,12 @@ The process for turning an idea into shipped code with an AI agent.
 
 **Order inside a task:**
 1. Read the PRD and the task file
-2. Read any relevant skill files in `.agents/skills/`
-3. Write the test first when the change is logic-heavy
-4. Implement
-5. Run `pnpm build` and `pnpm test`
-6. Update the task's "Notes" section with anything surprising
+2. Search memory for related patterns (`memory_find`)
+3. Read any relevant skill files in `.agents/skills/`
+4. Write the test first when the change is logic-heavy
+5. Implement
+6. Run `pnpm build` and `pnpm test`
+7. Update the task's "Notes" section with anything surprising
 
 **If you hit a real decision** (which package, which pattern, breaking schema change), pause and write an ADR before continuing.
 
@@ -80,10 +107,12 @@ Self-check before declaring done:
 | Conventions followed | kebab-case files, JSDoc, no `any` |
 | Task acceptance met | Re-read the task's acceptance list |
 | Decisions logged | ADR exists if anything non-obvious was chosen |
+| Drift check | Run `task_drift_check` — verify changes match planned scope |
 
 ## Step 5 — Done
 
 - Rename task file: `wip-...` → `done-...`
+- Run `compound_learnings` to extract and persist reusable knowledge
 - If the PRD is fully delivered, add a one-line "Status: shipped on YYYY-MM-DD" at the top of the PRD file.
 
 ## When Things Go Sideways

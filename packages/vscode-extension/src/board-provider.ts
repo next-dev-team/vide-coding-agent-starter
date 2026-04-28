@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { scanBoard, scanPrds, scanAdrs, scanTasks, moveTask, resolveTaskDir, createMemoryBackend } from "@agent-kanban/core";
+import { scanBoard, scanPrds, scanAdrs, scanTasks, moveTask, resolveTaskDir, createMemoryBackend, writeTask, nextId, taskFilename } from "@agent-kanban/core";
 import type { TaskStatus, MemoryCategory } from "@agent-kanban/core";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -116,8 +116,76 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
         this.refresh();
         break;
       }
+      case "tickAcceptance":
+      case "untickAcceptance": {
+        const taskId = msg.taskId as string;
+        const idx = msg.index as number;
+        if (!taskId || idx === undefined) break;
+        try {
+          const tasks = await scanTasks(this.workspaceRoot);
+          const task = tasks.find((t) => t.id === taskId);
+          if (!task) break;
+          const dir = task.status === "done"
+            ? resolveTaskDir(this.workspaceRoot, "done")
+            : resolveTaskDir(this.workspaceRoot, "todo");
+          const filePath = join(dir, task.filename);
+          let content = await readFile(filePath, "utf-8");
+          const lines = content.split("\n");
+          let checkboxCount = 0;
+          for (let i = 0; i < lines.length; i++) {
+            if (lines[i].match(/^-\s+\[[ xX]\]/)) {
+              if (checkboxCount === idx) {
+                lines[i] = msg.type === "tickAcceptance"
+                  ? lines[i].replace(/\[[ ]\]/, "[x]")
+                  : lines[i].replace(/\[[xX]\]/, "[ ]");
+                break;
+              }
+              checkboxCount++;
+            }
+          }
+          content = lines.join("\n");
+          await writeFile(filePath, content, "utf-8");
+          this.refresh();
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          vscode.window.showErrorMessage(`Failed to update criterion: ${message}`);
+        }
+        break;
+      }
       case "planFeature": {
         vscode.commands.executeCommand("agentKanban.createPrd");
+        break;
+      }
+      case "createTask": {
+        vscode.commands.executeCommand("agentKanban.createTask");
+        break;
+      }
+      case "createTaskWithDetails": {
+        const goal = msg.goal as string;
+        const slug = msg.slug as string;
+        if (!goal || !slug) break;
+        try {
+          const id = await nextId(this.workspaceRoot, "task");
+          const title = slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+          const content = writeTask({ id, title, goal });
+          const fname = taskFilename(id, slug);
+          const filePath = join(this.workspaceRoot, "docs", "tasks", fname);
+          
+          // Ensure directory exists
+          const dirPath = join(this.workspaceRoot, "docs", "tasks");
+          if (!existsSync(dirPath)) {
+            await mkdir(dirPath, { recursive: true });
+          }
+          
+          await writeFile(filePath, content, "utf-8");
+          const doc = await vscode.workspace.openTextDocument(filePath);
+          await vscode.window.showTextDocument(doc);
+          vscode.window.showInformationMessage(`Created task: ${fname}`);
+          this.refresh();
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          vscode.window.showErrorMessage(`Failed to create task: ${message}`);
+        }
         break;
       }
       case "requestReview": {
@@ -143,6 +211,29 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
           "```",
           `Call the MCP tool docs_sync with a target file (like docs/prd/0001-feature.md) to check for out-of-sync documentation and reconcile it.`,
           "```",
+        ].join("\n");
+        const doc = await vscode.workspace.openTextDocument({ content: md, language: "markdown" });
+        await vscode.window.showTextDocument(doc, { preview: true });
+        break;
+      }
+      case "syncAll": {
+        const md = [
+          `# 🔍 Sync All + Review`, "",
+          "Run the following in your AI agent to perform a **full project audit**:", "",
+          "```",
+          `Call the MCP tool project_sync_all to scan PRDs, tasks, code drift, git status, docs freshness, and memory health. Review the findings and execute the recommended actions.`,
+          "```", "",
+          "**What it scans:**",
+          "- 📋 PRD status vs task completion (are shipped features marked?)",
+          "- ✅ Task acceptance criteria (all checked?)",
+          "- 🔀 Code drift on WIP tasks (unexpected/missing files?)",
+          "- 🌿 Git status (uncommitted changes, stale worktrees?)",
+          "- 🧠 Memory health (brain freshness, dedup needed?)",
+          "- 📄 Docs freshness (AGENTS.md, PROJECT_BRAIN.md stale?)",
+          "- 🔒 Security + ⚡ Performance review status", "",
+          "**Options:**",
+          "- `include_review: false` — skip review checklists",
+          "- `include_git: false` — skip git status analysis",
         ].join("\n");
         const doc = await vscode.workspace.openTextDocument({ content: md, language: "markdown" });
         await vscode.window.showTextDocument(doc, { preview: true });
@@ -221,6 +312,19 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
         ].join("\n");
         const doc3 = await vscode.workspace.openTextDocument({ content: md3, language: "markdown" });
         await vscode.window.showTextDocument(doc3, { preview: true });
+        break;
+      }
+      // ── Browser ──────────────────────────────────────────────
+      case "openUrl": {
+        const urlStr = msg.url as string;
+        if (!urlStr) break;
+        try {
+          // Try VS Code's built-in Simple Browser first
+          await vscode.commands.executeCommand("simpleBrowser.api.open", vscode.Uri.parse(urlStr));
+        } catch {
+          // Fallback: open in external browser
+          await vscode.env.openExternal(vscode.Uri.parse(urlStr));
+        }
         break;
       }
       // ── Settings ──────────────────────────────────────────────
@@ -351,6 +455,26 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
         await vscode.window.showTextDocument(doc, { preview: true });
         break;
       }
+      case "startFeatureLoopAll": {
+        const md = [
+          `# 🚀 Feature Loop All — Batch Processing`, "",
+          "Run the following in your AI agent to process ALL pending tasks:", "",
+          "```",
+          `Call the MCP tool feature_loop_all to get a batch orchestration plan for all TODO tasks, then execute each task's steps in order.`,
+          "```", "",
+          "**Options:**",
+          "- `include_wip: true` — also resume WIP tasks",
+          "- `include_done: true` — extract compound learnings from done tasks",
+          "- `prd_filter: \"0004\"` — only tasks for a specific PRD", "",
+          "**The batch plan includes:**",
+          "1. 📋 Per-task orchestration steps (Plan → Implement → Review → Done → Compound)",
+          "2. 📊 PRD coverage summary",
+          "3. 🔄 Post-batch sync steps (docs, brain, AGENTS.md, memory dedup)",
+        ].join("\n");
+        const doc = await vscode.workspace.openTextDocument({ content: md, language: "markdown" });
+        await vscode.window.showTextDocument(doc, { preview: true });
+        break;
+      }
       // ── Skills ──────────────────────────────────────────────────
       case "initSkills":
       case "refreshSkills": {
@@ -441,6 +565,125 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
         await vscode.window.showTextDocument(doc);
         break;
       }
+      // ── Project Init ──────────────────────────────────────────
+      case "initProject": {
+        const command = msg.command as string;
+        const projectName = msg.projectName as string;
+        const initKanbanWorkflow = msg.initKanban as boolean;
+        if (!command || !projectName) break;
+
+        try {
+          const projectDir = join(this.workspaceRoot, projectName);
+          await mkdir(projectDir, { recursive: true });
+
+          // Run the scaffolding command in the project directory
+          const exec = promisify(execFile);
+          const isWindows = process.platform === "win32";
+          const shell = isWindows ? "cmd" : "sh";
+          const shellFlag = isWindows ? "/c" : "-c";
+
+          // Replace `.` with actual project dir path in the command
+          const resolvedCommand = command.replace(/\s\.\s/, ` ${projectDir} `).replace(/\s\.$/, ` ${projectDir}`);
+
+          await exec(shell, [shellFlag, resolvedCommand], {
+            cwd: projectDir,
+            timeout: 120_000,
+          });
+
+          // Optionally init Kanban workflow structure
+          if (initKanbanWorkflow) {
+            for (const dir of ["docs/prd", "docs/tasks", "docs/tasks/done", "docs/decisions"]) {
+              await mkdir(join(projectDir, dir), { recursive: true });
+            }
+            await mkdir(join(projectDir, ".agents", "workflows"), { recursive: true });
+            await mkdir(join(projectDir, ".agents", "templates"), { recursive: true });
+            await mkdir(join(projectDir, ".agents", "skills"), { recursive: true });
+
+            // Write a basic AGENTS.md if not exists
+            const agentsPath = join(projectDir, "AGENTS.md");
+            if (!existsSync(agentsPath)) {
+              const agentsMd = [
+                "# AGENTS.md",
+                "",
+                "Instructions for AI coding agents working in this repo.",
+                "",
+                "## Project",
+                "",
+                `**${projectName}** — Created with Agent Kanban`,
+                "",
+                "## Commands",
+                "",
+                "| Task | Command |",
+                "| ---- | ------- |",
+                "| Install deps | `npm install` |",
+                "| Dev | `npm run dev` |",
+                "| Build | `npm run build` |",
+                "",
+              ].join("\n");
+              await writeFile(agentsPath, agentsMd, "utf-8");
+            }
+          }
+
+          this._view?.webview.postMessage({
+            type: "initResult",
+            success: true,
+            message: `Project "${projectName}" created successfully!${initKanbanWorkflow ? " Kanban workflow initialized." : ""}`,
+          });
+
+          // Offer to open the new project
+          const openAction = await vscode.window.showInformationMessage(
+            `✨ Project "${projectName}" scaffolded!`,
+            "Open Folder",
+          );
+          if (openAction === "Open Folder") {
+            await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(projectDir));
+          }
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          this._view?.webview.postMessage({
+            type: "initResult",
+            success: false,
+            message: `Failed: ${message}`,
+          });
+          vscode.window.showErrorMessage(`Init failed: ${message}`);
+        }
+        break;
+      }
+      case "initFromTemplate": {
+        const templateId = msg.templateId as string;
+        if (!templateId) break;
+
+        try {
+          // Ask for target directory
+          const targetName = await vscode.window.showInputBox({
+            prompt: "Project directory name",
+            placeHolder: "my-project",
+            value: "my-project",
+          });
+          if (!targetName) break;
+
+          const projectDir = join(this.workspaceRoot, targetName);
+
+          // Run the CLI create-kanban-app command
+          const exec = promisify(execFile);
+          await exec("npx", ["-y", "create-kanban-app", projectDir, "--template", templateId], {
+            cwd: this.workspaceRoot,
+            timeout: 120_000,
+          });
+
+          const openAction = await vscode.window.showInformationMessage(
+            `✨ Template "${templateId}" scaffolded into ${targetName}!`,
+            "Open Folder",
+          );
+          if (openAction === "Open Folder") {
+            await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(projectDir));
+          }
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          vscode.window.showErrorMessage(`Template init failed: ${message}`);
+        }
+        break;
+      }
     }
   }
 
@@ -463,6 +706,7 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
         docs,
         skills,
         knowledge,
+        version: this._version,
       });
     } catch {
       // Ignored

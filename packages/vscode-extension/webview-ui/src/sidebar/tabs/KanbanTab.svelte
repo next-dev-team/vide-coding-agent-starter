@@ -1,7 +1,9 @@
 <script lang="ts">
-  import type { Board, TaskStatus } from "$lib/types";
+  import type { Board, Task, TaskStatus } from "$lib/types";
   import { getVsCode } from "$lib/vscode";
   import TaskCard from "$lib/components/TaskCard.svelte";
+  import TaskDetailModal from "$lib/components/TaskDetailModal.svelte";
+  import TaskCreateModal from "$lib/components/TaskCreateModal.svelte";
   import Badge from "$lib/components/ui/badge.svelte";
   import Button from "$lib/components/ui/button.svelte";
 
@@ -13,13 +15,24 @@
     persisted?.open ?? { todo: true, wip: true, verified: false, done: false, blocked: false },
   );
 
+  let selectedTask = $state<Task | null>(null);
+  let showCreateModal = $state(false);
+
   function toggle(status: TaskStatus) {
     open[status] = !open[status];
     vscode.setState({ open });
   }
 
   function createTask() {
-    vscode.postMessage({ type: "createTask" });
+    showCreateModal = true;
+  }
+
+  function openDetail(task: Task) {
+    selectedTask = task;
+  }
+
+  function closeDetail() {
+    selectedTask = null;
   }
 
   const STATUS_ICONS: Record<TaskStatus, string> = {
@@ -56,7 +69,7 @@
       {#if isOpen}
         <div class="column-body" style="animation: var(--animate-fade-in)">
           {#each column.tasks as task (task.id)}
-            <TaskCard {task} />
+            <TaskCard {task} onviewdetail={openDetail} />
           {:else}
             <div class="empty-col">
               <span class="empty-icon">{STATUS_ICONS[column.status]}</span>
@@ -68,6 +81,16 @@
     </section>
   {/each}
 </div>
+
+<!-- Task Detail Modal (Jira-style) -->
+{#if selectedTask}
+  <TaskDetailModal task={selectedTask} onclose={closeDetail} />
+{/if}
+
+<!-- Task Create Modal -->
+{#if showCreateModal}
+  <TaskCreateModal onclose={() => showCreateModal = false} />
+{/if}
 
 <style>
   .kanban-root {

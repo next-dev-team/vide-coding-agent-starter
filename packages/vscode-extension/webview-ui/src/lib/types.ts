@@ -18,6 +18,12 @@ export interface Task {
   status: TaskStatus;
   goal?: string;
   acceptance: AcceptanceItem[];
+  prdRef?: string | null;
+  created?: string | null;
+  filesAffected?: string[];
+  approach?: string[];
+  openQuestions?: string[];
+  notes?: string[];
 }
 
 export interface Column {
@@ -43,9 +49,13 @@ export type OutboundMessage =
   | { type: "worktreeCleanup"; taskId: string }
   | { type: "createPr"; taskId: string }
   | { type: "startFeatureLoop"; taskId: string }
+  | { type: "startFeatureLoopAll" }
+  | { type: "syncAll" }
   | { type: "openPrd"; filename: string }
   | { type: "openAdr"; filename: string }
-  | { type: "openTestCase"; filename: string };
+  | { type: "openTestCase"; filename: string }
+  | { type: "tickAcceptance"; taskId: string; index: number }
+  | { type: "untickAcceptance"; taskId: string; index: number };
 
 export interface DocEntry {
   filename: string;

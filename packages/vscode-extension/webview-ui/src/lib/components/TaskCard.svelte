@@ -5,9 +5,10 @@
 
   interface Props {
     task: Task;
+    onviewdetail?: (task: Task) => void;
   }
 
-  let { task }: Props = $props();
+  let { task, onviewdetail }: Props = $props();
   const vscode = getVsCode();
 
   const total = $derived(task.acceptance.length);
@@ -16,7 +17,11 @@
   const title = $derived(task.goal || task.slug.replace(/-/g, " "));
 
   function open() {
-    vscode.postMessage({ type: "openFile", filename: task.filename });
+    if (onviewdetail) {
+      onviewdetail(task);
+    } else {
+      vscode.postMessage({ type: "openFile", filename: task.filename });
+    }
   }
 
   function moveTask(status: string) {
@@ -44,6 +49,9 @@
   {/if}
   <!-- Quick-move actions -->
   <div class="task-actions">
+    {#if task.status === "todo"}
+      <button type="button" class="action-btn rocket" onclick={(e) => { e.stopPropagation(); vscode.postMessage({ type: "startFeatureLoop", taskId: task.id }); }} title="Feature Loop">🚀</button>
+    {/if}
     {#if task.status !== "wip"}
       <button type="button" class="action-btn" onclick={(e) => { e.stopPropagation(); moveTask("wip"); }} title="Start">▶</button>
     {/if}
@@ -52,6 +60,9 @@
     {/if}
     {#if task.status === "verified"}
       <button type="button" class="action-btn" onclick={(e) => { e.stopPropagation(); moveTask("done"); }} title="Done">✔</button>
+    {/if}
+    {#if task.status === "done"}
+      <button type="button" class="action-btn" onclick={(e) => { e.stopPropagation(); vscode.postMessage({ type: "compoundLearnings", taskId: task.id }); }} title="Compound Learnings">🧠</button>
     {/if}
   </div>
 </div>
