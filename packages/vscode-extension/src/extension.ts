@@ -1,5 +1,7 @@
 import * as vscode from "vscode";
 import { BoardViewProvider } from "./board-provider.js";
+import { BoardPanel } from "./board-panel.js";
+import { DocsPanel } from "./docs-panel.js";
 import { StatusBarManager } from "./status-bar.js";
 import { scanBoard, nextId, writeTask, taskFilename, writePrd, prdFilename } from "@agent-kanban/core";
 import { writeFile, readFile, mkdir } from "node:fs/promises";
@@ -60,7 +62,13 @@ export async function activate(context: vscode.ExtensionContext) {
     for (const w of projectWatchers) w.dispose();
     projectWatchers = [];
 
-    const refresh = debounce(() => { void boardProvider.refresh(); void statusBar.update(); }, 300);
+    const refresh = debounce(() => {
+      void boardProvider.refresh();
+      void statusBar.update();
+      // Notify wide panels if open. Static `current` returns undefined when not.
+      void BoardPanel["current"]?.refresh();
+      void DocsPanel["current"]?.refresh();
+    }, 300);
 
     const w1 = vscode.workspace.createFileSystemWatcher(
       new vscode.RelativePattern(root, "docs/tasks/*.md"),
@@ -81,6 +89,12 @@ export async function activate(context: vscode.ExtensionContext) {
     w3.onDidCreate(() => { void boardProvider.refresh(); });
     w3.onDidDelete(() => { void boardProvider.refresh(); });
     projectWatchers.push(w3);
+
+    const w4 = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(root, "docs/{prd,decisions,test-cases}/*.md"),
+    );
+    w4.onDidChange(refresh); w4.onDidCreate(refresh); w4.onDidDelete(refresh);
+    projectWatchers.push(w4);
   }
 
   registerWatchers(activeRoot);
@@ -91,6 +105,8 @@ export async function activate(context: vscode.ExtensionContext) {
     activeRoot = newRoot;
     await context.workspaceState.update("agentKanban.activeProjectRoot", newRoot);
     boardProvider.setWorkspaceRoot(newRoot);
+    BoardPanel["current"]?.setWorkspaceRoot(newRoot);
+    DocsPanel["current"]?.setWorkspaceRoot(newRoot);
     statusBar.setProject(newRoot, name, true);
     void statusBar.update();
     registerWatchers(newRoot);
@@ -183,6 +199,24 @@ export async function activate(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand("agentKanban.setupCompanion", async (server?: string) => {
       await setupCompanionServer(activeRoot, server || "context7");
+    }),
+
+    vscode.commands.registerCommand("agentKanban.openWideBoard", async () => {
+      try {
+        await BoardPanel.createOrShow(context.extensionPath, activeRoot);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        vscode.window.showErrorMessage(`Wide board failed to load: ${message}`);
+      }
+    }),
+
+    vscode.commands.registerCommand("agentKanban.openDocsPanel", async () => {
+      try {
+        await DocsPanel.createOrShow(context.extensionPath, activeRoot);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        vscode.window.showErrorMessage(`Docs panel failed to load: ${message}`);
+      }
     }),
 
     vscode.commands.registerCommand("agentKanban.openWebview", async (url?: string) => {

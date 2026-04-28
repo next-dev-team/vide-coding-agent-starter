@@ -1,0 +1,119 @@
+@import "tailwindcss";
+
+/*
+ * Bridge: VS Code theme tokens → shadcn/Tailwind design tokens.
+ * Webviews inherit `--vscode-*` CSS variables from the host. We re-export
+ * them under shadcn's expected names so shadcn-svelte components inherit
+ * the user's editor theme automatically (light, dark, high-contrast).
+ */
+@theme inline {
+  --color-background: var(--vscode-sideBar-background, #1e1e1e);
+  --color-foreground: var(--vscode-foreground, #cccccc);
+
+  --color-card: var(--vscode-editor-background, #1e1e1e);
+  --color-card-foreground: var(--vscode-foreground, #cccccc);
+
+  --color-popover: var(--vscode-editorWidget-background, #252526);
+  --color-popover-foreground: var(--vscode-foreground, #cccccc);
+
+  --color-primary: var(--vscode-button-background, #0e639c);
+  --color-primary-foreground: var(--vscode-button-foreground, #ffffff);
+
+  --color-secondary: var(--vscode-button-secondaryBackground, #3a3d41);
+  --color-secondary-foreground: var(--vscode-button-secondaryForeground, #ffffff);
+
+  --color-muted: var(--vscode-editorWidget-background, #252526);
+  --color-muted-foreground: var(--vscode-descriptionForeground, #989898);
+
+  --color-accent: var(--vscode-list-hoverBackground, #2a2d2e);
+  --color-accent-foreground: var(--vscode-foreground, #cccccc);
+
+  --color-destructive: var(--vscode-errorForeground, #f48771);
+  --color-destructive-foreground: var(--vscode-button-foreground, #ffffff);
+
+  --color-border: var(--vscode-panel-border, #3c3c3c);
+  --color-input: var(--vscode-input-background, #3c3c3c);
+  --color-ring: var(--vscode-focusBorder, #007fd4);
+
+  /* Semantic status pills (Kanban) */
+  --color-status-todo: var(--vscode-charts-blue, #3794ff);
+  --color-status-wip: var(--vscode-charts-yellow, #cca700);
+  --color-status-verified: var(--vscode-charts-purple, #b180d7);
+  --color-status-done: var(--vscode-charts-green, #89d185);
+  --color-status-blocked: var(--vscode-charts-red, #f14c4c);
+
+  --radius: 0.5rem;
+  --font-sans: var(--vscode-font-family, system-ui, sans-serif);
+
+  /* Animation */
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-slide-down: slide-down 0.15s ease-out;
+  --animate-pulse-subtle: pulse-subtle 2s ease-in-out infinite;
+}
+
+/* Reset that respects VS Code's font sizing */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  background: var(--color-background);
+  color: var(--color-foreground);
+}
+
+/* ── Animations ─────────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: 500px; }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── Scrollbar styling ──────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
+}
+
+/* ── Utility classes ────────────────────────────────────────── */
+.glass-card {
+  background: color-mix(in srgb, var(--color-card) 80%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+  border-radius: 0.5rem;
+}
+
+.status-glow-todo { box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-status-todo) 20%, transparent); }
+.status-glow-wip { box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-status-wip) 20%, transparent); }
+.status-glow-verified { box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-status-verified) 20%, transparent); }
+.status-glow-done { box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-status-done) 20%, transparent); }
+.status-glow-blocked { box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-status-blocked) 20%, transparent); }
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

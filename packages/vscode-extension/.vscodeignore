@@ -1,0 +1,7 @@
+!dist/**
+src/**
+.gitignore
+build.mjs
+tsconfig.json
+*.tsbuildinfo
+webview-ui/**

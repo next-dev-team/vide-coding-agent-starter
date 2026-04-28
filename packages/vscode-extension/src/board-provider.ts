@@ -1,13 +1,38 @@
 import * as vscode from "vscode";
-import { scanBoard, scanPrds, scanAdrs, scanTasks, moveTask, resolveTaskDir } from "@agent-kanban/core";
-import type { TaskStatus } from "@agent-kanban/core";
+import { scanBoard, scanPrds, scanAdrs, scanTasks, moveTask, resolveTaskDir, createMemoryBackend } from "@agent-kanban/core";
+import type { TaskStatus, MemoryCategory } from "@agent-kanban/core";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { existsSync } from "node:fs";
 import { rm, readdir, readFile, writeFile, mkdir, copyFile } from "node:fs/promises";
 import { join, relative, basename, extname } from "node:path";
-import { getHtml, getErrorHtml } from "./webview/index.js";
-import type { SkillInfo } from "./webview/panel-skills.js";
+import { renderSvelteHtml, svelteResourceRoots } from "./svelte-host.js";
+
+/** Shape of a memory entry sent to the webview. */
+export interface KnowledgeMemory {
+  id: number;
+  category: string;
+  slug: string;
+  abstract: string;
+  tokenCount: number;
+}
+
+/** Knowledge data sent to the webview. */
+export interface KnowledgeData {
+  brainContent: string;
+  brainExists: boolean;
+  memories: KnowledgeMemory[];
+  categories: Record<string, number>;
+  totalMemories: number;
+}
+export interface SkillInfo {
+  slug: string;
+  name: string;
+  description: string;
+  format: "local" | "cursor" | "copilot" | "claude" | "vercel";
+  path: string;
+  active: boolean;
+}
 
 /** Provides the unified Kanban board webview in the sidebar (Tabs: Kanban, Monitor, Settings). */
 export class BoardViewProvider implements vscode.WebviewViewProvider {
@@ -39,8 +64,19 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
     _token: vscode.CancellationToken,
   ) {
     this._view = webviewView;
-    webviewView.webview.options = { enableScripts: true };
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: svelteResourceRoots(this.extensionUri.fsPath),
+    };
     webviewView.webview.onDidReceiveMessage(msg => this._handleMessage(msg));
+    
+    this._view.webview.html = await renderSvelteHtml({
+      entry: "sidebar.html",
+      webview: this._view.webview,
+      extensionPath: this.extensionUri.fsPath,
+      title: "Agent Kanban Sidebar",
+    });
+
     await this._updateWebview();
   }
 
@@ -134,6 +170,57 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
           entries: [],
           summary: { filesAccessed: 0, totalTokensUsed: 0, totalFullTokens: 0, totalTokensSaved: 0 },
         });
+        break;
+      }
+      // ── Knowledge ─────────────────────────────────────────────
+      case "syncBrain": {
+        const md = [
+          `# 🧠 Sync Project Brain`, "",
+          "Run the following in your AI agent to regenerate the PROJECT_BRAIN.md:", "",
+          "```",
+          `Call the MCP tool memory_brain_sync to regenerate docs/PROJECT_BRAIN.md from the memory engine's L0 abstracts.`,
+          "```",
+        ].join("\n");
+        const doc = await vscode.workspace.openTextDocument({ content: md, language: "markdown" });
+        await vscode.window.showTextDocument(doc, { preview: true });
+        break;
+      }
+      case "openBrain": {
+        const brainPath = join(this.workspaceRoot, "docs", "PROJECT_BRAIN.md");
+        if (existsSync(brainPath)) {
+          const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(brainPath));
+          await vscode.window.showTextDocument(doc);
+        } else {
+          vscode.window.showInformationMessage("PROJECT_BRAIN.md not found. Sync it first via an agent.");
+        }
+        break;
+      }
+      case "readMemory": {
+        const memId = msg.memoryId as string;
+        if (!memId) break;
+        const md2 = [
+          `# 📖 Read Memory #${memId}`, "",
+          "Run the following in your AI agent:", "",
+          "```",
+          `Call the MCP tool memory_read with id_or_path: "${memId}" to load the full L2 content.`,
+          "```",
+        ].join("\n");
+        const doc2 = await vscode.workspace.openTextDocument({ content: md2, language: "markdown" });
+        await vscode.window.showTextDocument(doc2, { preview: true });
+        break;
+      }
+      case "findMemory": {
+        const query = msg.query as string;
+        if (!query) break;
+        const md3 = [
+          `# 🔍 Search Memories: "${query}"`, "",
+          "Run the following in your AI agent:", "",
+          "```",
+          `Call the MCP tool memory_find with query: "${query}" to search project memories.`,
+          "```",
+        ].join("\n");
+        const doc3 = await vscode.workspace.openTextDocument({ content: md3, language: "markdown" });
+        await vscode.window.showTextDocument(doc3, { preview: true });
         break;
       }
       // ── Settings ──────────────────────────────────────────────
@@ -366,11 +453,62 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
         scanAdrs(this.workspaceRoot),
         scanTasks(this.workspaceRoot),
       ]);
-      const docsData = { prds, adrs, tasks };
-      this._view.webview.html = getHtml(board, this._skills, this._version, docsData);
+      const docs = { prds, adrs, tasks };
+      const skills = this._skills;
+      const knowledge = await this._scanKnowledge();
+
+      void this._view.webview.postMessage({
+        type: "boardUpdated",
+        board,
+        docs,
+        skills,
+        knowledge,
+      });
     } catch {
-      this._view.webview.html = getErrorHtml();
+      // Ignored
     }
+  }
+
+  /** Scan knowledge data: PROJECT_BRAIN.md + memory overview. */
+  private async _scanKnowledge(): Promise<KnowledgeData> {
+    let brainContent = "";
+    let brainExists = false;
+    const brainPath = join(this.workspaceRoot, "docs", "PROJECT_BRAIN.md");
+    if (existsSync(brainPath)) {
+      brainContent = await readFile(brainPath, "utf-8");
+      brainExists = true;
+    }
+
+    const memories: KnowledgeMemory[] = [];
+    const categories: Record<string, number> = {};
+    try {
+      const store = createMemoryBackend(this.workspaceRoot);
+      try {
+        const all = await Promise.resolve(store.overview());
+        for (const m of all) {
+          memories.push({
+            id: m.id,
+            category: m.category,
+            slug: m.slug,
+            abstract: m.l0_abstract,
+            tokenCount: m.token_count,
+          });
+          categories[m.category] = (categories[m.category] || 0) + 1;
+        }
+      } finally {
+        store.close();
+      }
+    } catch {
+      // Memory store may not exist yet — that's fine
+    }
+
+    return {
+      brainContent,
+      brainExists,
+      memories,
+      categories,
+      totalMemories: memories.length,
+    };
   }
 }
 
