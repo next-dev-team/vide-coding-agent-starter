@@ -2,7 +2,7 @@
   "name": "agent-kanban-vscode",
   "displayName": "Agent Kanban",
   "description": "Trello-like Kanban board for markdown-based task management — works with AI agents via MCP",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "publisher": "agent-kanban",
   "repository": {
     "type": "git",

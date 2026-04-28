@@ -226,14 +226,12 @@ async function setupMcpServer(
   context: vscode.ExtensionContext,
   target: string,
 ): Promise<void> {
-  // Resolve the MCP server dist path — works both in dev and installed builds.
-  const serverPath = resolve(
-    context.extensionPath,
-    "..",
-    "mcp-server",
-    "dist",
-    "index.js",
-  );
+  // Resolve the MCP server dist path.
+  // 1. Check workspace root (monorepo: packages/mcp-server/dist/index.js)
+  // 2. Fall back to extension-relative sibling (co-located installs)
+  const monorepoCandidate = resolve(workspaceRoot, "packages", "mcp-server", "dist", "index.js");
+  const extensionCandidate = resolve(context.extensionPath, "..", "mcp-server", "dist", "index.js");
+  const serverPath = existsSync(monorepoCandidate) ? monorepoCandidate : extensionCandidate;
 
   let configDirPath: string;
   let mcpJsonPath: string;

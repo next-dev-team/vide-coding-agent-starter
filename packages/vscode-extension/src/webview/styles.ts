@@ -618,4 +618,228 @@ export const styles = /*css*/ `
     font-size: 10px;
     opacity: 0.6;
   }
+
+  /* ── Docs panel ──────────────────────────────────────────────── */
+  .doc-sub-tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    padding-bottom: 0;
+  }
+  .doc-sub-tab {
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--vscode-foreground);
+    cursor: pointer;
+    opacity: 0.55;
+    transition: opacity 0.15s, border-color 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .doc-sub-tab:hover { opacity: 0.85; }
+  .doc-sub-tab.active {
+    opacity: 1;
+    border-bottom-color: var(--vscode-focusBorder);
+  }
+  .doc-sub-panel { display: none; }
+  .doc-sub-panel.active { display: block; }
+
+  /* ── Doc cards ────────────────────────────────────────────────── */
+  .doc-card {
+    background: var(--vscode-editor-background);
+    border: 1px solid var(--vscode-panel-border);
+    border-left: 3px solid var(--vscode-charts-blue);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .doc-card:last-child { margin-bottom: 0; }
+  .doc-card:hover {
+    border-right-color: var(--vscode-focusBorder);
+    border-top-color: var(--vscode-focusBorder);
+    border-bottom-color: var(--vscode-focusBorder);
+    background: var(--vscode-list-hoverBackground);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  }
+  .doc-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .doc-card-id {
+    font-size: 10px;
+    font-weight: 600;
+    opacity: 0.6;
+    font-family: var(--vscode-editor-font-family);
+    background: var(--vscode-editorWidget-background);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .doc-card-title {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  .doc-card-excerpt {
+    font-size: 11px;
+    opacity: 0.65;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .doc-card-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 2px;
+  }
+  .doc-card-meta {
+    font-size: 10px;
+    opacity: 0.55;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+  }
+  .doc-card-progress {
+    font-size: 10px;
+    opacity: 0.7;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ── Status badges ─────────────────────────────────────────── */
+  .doc-status-badge {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 2px 7px;
+    border-radius: 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* ── Doc preview overlay ───────────────────────────────────── */
+  .doc-preview-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--vscode-sideBar-background);
+    z-index: 100;
+    overflow-y: auto;
+    padding: 0;
+  }
+  .doc-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--vscode-panel-border);
+    background: var(--vscode-editorWidget-background);
+    position: sticky;
+    top: 0;
+    z-index: 101;
+  }
+  .doc-preview-back {
+    background: none;
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 4px;
+    color: var(--vscode-foreground);
+    cursor: pointer;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+  .doc-preview-back:hover {
+    background: var(--vscode-button-secondaryBackground);
+  }
+  .doc-preview-open {
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    transition: opacity 0.15s;
+  }
+  .doc-preview-open:hover { opacity: 0.85; }
+  .doc-preview-content {
+    padding: 12px 16px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--vscode-foreground);
+  }
+
+  /* ── Markdown rendering inside preview ─────────────────────── */
+  .doc-h2 { font-size: 16px; font-weight: 700; margin: 14px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--vscode-panel-border); }
+  .doc-h3 { font-size: 14px; font-weight: 700; margin: 12px 0 4px; }
+  .doc-h4 { font-size: 12px; font-weight: 700; margin: 10px 0 3px; opacity: 0.85; }
+  .doc-h5 { font-size: 11px; font-weight: 700; margin: 8px 0 2px; opacity: 0.75; }
+  .doc-para { margin: 4px 0; }
+  .doc-inline-code {
+    font-family: var(--vscode-editor-font-family);
+    font-size: 11px;
+    background: var(--vscode-editorWidget-background);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  .doc-blockquote {
+    border-left: 3px solid var(--vscode-focusBorder);
+    padding: 4px 10px;
+    margin: 6px 0;
+    opacity: 0.8;
+    font-style: italic;
+  }
+  .doc-check {
+    padding: 2px 0;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .doc-check.checked {
+    opacity: 0.7;
+    text-decoration: line-through;
+  }
+  .doc-list-item {
+    padding: 1px 0 1px 12px;
+    font-size: 11px;
+  }
+  .doc-list-num {
+    font-weight: 600;
+    opacity: 0.7;
+  }
+  .doc-hr {
+    border: none;
+    border-top: 1px solid var(--vscode-panel-border);
+    margin: 8px 0;
+  }
+
+  /* ── Tab badge (generic) ──────────────────────────────────── */
+  .tab-badge {
+    background: var(--vscode-badge-background);
+    color: var(--vscode-badge-foreground);
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 8px;
+    margin-left: 2px;
+  }
 `;

@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { scanBoard, moveTask, resolveTaskDir } from "@agent-kanban/core";
+import { scanBoard, scanPrds, scanAdrs, scanTasks, moveTask, resolveTaskDir } from "@agent-kanban/core";
 import type { TaskStatus } from "@agent-kanban/core";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -323,14 +323,39 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
         await distributeSkills(this.workspaceRoot, agent);
         break;
       }
+      // ── Docs ────────────────────────────────────────────────────
+      case "openPrd": {
+        const filename = msg.filename as string;
+        if (!filename) break;
+        const prdDir = join(this.workspaceRoot, "docs", "prd");
+        const uri = vscode.Uri.file(join(prdDir, filename));
+        const doc = await vscode.workspace.openTextDocument(uri);
+        await vscode.window.showTextDocument(doc);
+        break;
+      }
+      case "openAdr": {
+        const filename = msg.filename as string;
+        if (!filename) break;
+        const adrDir = join(this.workspaceRoot, "docs", "decisions");
+        const uri = vscode.Uri.file(join(adrDir, filename));
+        const doc = await vscode.workspace.openTextDocument(uri);
+        await vscode.window.showTextDocument(doc);
+        break;
+      }
     }
   }
 
   private async _updateWebview() {
     if (!this._view) return;
     try {
-      const board = await scanBoard(this.workspaceRoot);
-      this._view.webview.html = getHtml(board, this._skills, this._version);
+      const [board, prds, adrs, tasks] = await Promise.all([
+        scanBoard(this.workspaceRoot),
+        scanPrds(this.workspaceRoot),
+        scanAdrs(this.workspaceRoot),
+        scanTasks(this.workspaceRoot),
+      ]);
+      const docsData = { prds, adrs, tasks };
+      this._view.webview.html = getHtml(board, this._skills, this._version, docsData);
     } catch {
       this._view.webview.html = getErrorHtml();
     }

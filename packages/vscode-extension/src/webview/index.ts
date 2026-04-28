@@ -6,6 +6,8 @@ import { renderMcpPanel } from "./panel-mcp.js";
 import { renderMonitorPanel } from "./panel-monitor.js";
 import { renderSkillsPanel } from "./panel-skills.js";
 import type { SkillInfo } from "./panel-skills.js";
+import { renderDocsPanel } from "./panel-docs.js";
+import type { DocsData } from "./panel-docs.js";
 
 // ── Client-side JS ────────────────────────────────────────────────────────────
 
@@ -81,6 +83,34 @@ const FULL_SCRIPTS = /*js*/ `
   function openSkill(path)        { vscode.postMessage({ type: 'openSkill', path }); }
   function setupAgentSkills(agent){ vscode.postMessage({ type: 'setupAgentSkills', agent }); }
 
+  // ── Docs tab actions ──────────────────────────────────────────
+  function openPrd(filename)      { vscode.postMessage({ type: 'openPrd', filename }); }
+  function openAdr(filename)      { vscode.postMessage({ type: 'openAdr', filename }); }
+  function switchDocSub(sub) {
+    document.querySelectorAll('.doc-sub-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.doc-sub-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('doc-sub-' + sub).classList.add('active');
+    document.getElementById('doc-panel-' + sub).classList.add('active');
+    var s = vscode.getState() || {};
+    vscode.setState({ ...s, activeDocSub: sub });
+  }
+  function closeDocPreview() {
+    document.getElementById('doc-preview').style.display = 'none';
+  }
+  function openPreviewedDoc() {
+    var btn = document.getElementById('doc-preview-open-btn');
+    if (btn && btn.dataset.docType && btn.dataset.filename) {
+      if (btn.dataset.docType === 'prd') openPrd(btn.dataset.filename);
+      else if (btn.dataset.docType === 'adr') openAdr(btn.dataset.filename);
+      else openFile(btn.dataset.filename);
+    }
+  }
+  // Restore doc sub-tab on load
+  (function restoreDocSub() {
+    var s = vscode.getState() || {};
+    if (s.activeDocSub && s.activeDocSub !== 'prd') switchDocSub(s.activeDocSub);
+  })();
+
   // ── MCP tab actions ───────────────────────────────────────────
   function setupMcp(target)       { vscode.postMessage({ type: 'setupMcpServer', target: target || 'vscode' }); }
   function setupCompanion(server)  { vscode.postMessage({ type: 'setupCompanion', server }); }
@@ -153,9 +183,12 @@ const FULL_SCRIPTS = /*js*/ `
 
 /**
  * Builds the full single-webview HTML with a horizontal tab bar at the top.
- * Tabs: 📋 Kanban | ⚙️ Skills | 🔄 Workflow | 🔌 MCP | 🧠 Memory
+ * Tabs: 📋 Kanban | 📄 Docs | ⚙️ Skills | 🔄 Workflow | 🔌 MCP | 🧠 Memory
  */
-export function getHtml(board: Board, skills: SkillInfo[] = [], version = ""): string {
+export function getHtml(board: Board, skills: SkillInfo[] = [], version = "", docsData?: DocsData): string {
+  const docs: DocsData = docsData ?? { prds: [], adrs: [], tasks: [] };
+  const docsCount = docs.prds.length + docs.adrs.length + docs.tasks.length;
+
   return /*html*/ `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -170,6 +203,7 @@ export function getHtml(board: Board, skills: SkillInfo[] = [], version = ""): s
   <!-- Horizontal tab bar -->
   <div class="tab-bar">
     <button class="tab-btn active" id="tab-kanban" onclick="switchTab('kanban')">📋 Kanban</button>
+    <button class="tab-btn" id="tab-docs" onclick="switchTab('docs')">📄 Docs <span class="tab-badge">${docsCount || ''}</span></button>
     <button class="tab-btn" id="tab-skills" onclick="switchTab('skills')">⚙️ Skills <span id="tab-skills-badge" style="display:none;background:var(--vscode-badge-background);color:var(--vscode-badge-foreground);font-size:9px;padding:1px 5px;border-radius:8px;margin-left:2px">${skills.length || ''}</span></button>
     <button class="tab-btn" id="tab-workflow" onclick="switchTab('workflow')">🔄 Workflow</button>
     <button class="tab-btn" id="tab-mcp" onclick="switchTab('mcp')">🔌 MCP</button>
@@ -178,6 +212,10 @@ export function getHtml(board: Board, skills: SkillInfo[] = [], version = ""): s
 
   <div class="tab-panel active" id="panel-kanban">
     ${renderKanbanPanel(board)}
+  </div>
+
+  <div class="tab-panel" id="panel-docs">
+    ${renderDocsPanel(docs)}
   </div>
 
   <div class="tab-panel" id="panel-skills">
