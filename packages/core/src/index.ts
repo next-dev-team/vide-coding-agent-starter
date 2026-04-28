@@ -79,3 +79,26 @@ export {
   MemoryFileBackend,
   createMemoryBackend,
 } from "./memory/index.js";
+
+// ─── Lifecycle Hooks ───────────────────────────────────────────────
+export type { HookName, HookInfo, HookContent } from "./hooks.js";
+export {
+  HOOK_NAMES,
+  scanHooks,
+  getHookContent,
+  getTransitionHook,
+  initHooks,
+} from "./hooks.js";
+
+// ─── Drift Detection ──────────────────────────────────────────────
+export type { DriftReport } from "./drift.js";
+export { checkDrift } from "./drift.js";
+
+// ─── Intent Interview ─────────────────────────────────────────────
+export type { InterviewQuestion, InterviewResult } from "./interview.js";
+export {
+  DEFAULT_QUESTIONS,
+  getInterviewQuestions,
+  buildInterviewPrompt,
+  interviewToPrd,
+} from "./interview.js";

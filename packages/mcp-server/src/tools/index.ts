@@ -16,11 +16,12 @@ import {
   prdFilename,
   writeAdr,
   adrFilename,
+  checkDrift,
 } from "@agent-kanban/core";
 import type { TaskStatus, DocType } from "@agent-kanban/core";
 import { readFile, readdir } from "node:fs/promises";
 
-// ─── Memory tools ─────────────────────────────────────────────
+// ── Memory tools ─────────────────────────────────────────────
 import { compoundLearningsTool, handleCompoundLearnings } from "./compound-learnings.js";
 import {
   memoryFindTool, handleMemoryFind,
@@ -30,6 +31,7 @@ import {
 import { memoryDedupeTool, handleMemoryDedupe } from "./memory-dedupe.js";
 import { memorySessionTool, handleMemorySession } from "./memory-session.js";
 import { memoryConfigSetTool, handleMemoryConfigSet } from "./memory-config.js";
+import { memoryBrainSyncTool, handleMemoryBrainSync } from "./memory-brain-sync.js";
 import {
   worktreeCreateTool, handleWorktreeCreate,
   worktreeCleanupTool, handleWorktreeCleanup,
@@ -37,6 +39,11 @@ import {
 import { prCreateTool, handlePrCreate } from "./pr-create.js";
 import { featureLoopTool, handleFeatureLoop } from "./feature-loop.js";
 import { agentsGenerateTool, handleAgentsGenerate } from "./agents-generate.js";
+// ── New tools (OMX-inspired) ─────────────────────────────────
+import { intentInterviewTool, handleIntentInterview } from "./intent-interview.js";
+import { driftCheckTool, handleDriftCheck } from "./drift-check.js";
+import { hooksListTool, hooksInitTool, handleHooksList, handleHooksInit, getTransitionHookContent } from "./hooks.js";
+import { docsSyncTool, handleDocsSync } from "./docs-sync.js";
 
 /** Resolve project path — defaults to cwd. */
 function resolveProjectPath(args: Record<string, unknown>): string {
@@ -91,7 +98,7 @@ export function registerTools() {
           task_id: { type: "string", description: "Task ID, e.g. '0001' or '0002a'" },
           new_status: {
             type: "string",
-            enum: ["todo", "wip", "done", "blocked"],
+            enum: ["todo", "wip", "verified", "done", "blocked"],
             description: "Target status",
           },
         },
@@ -198,6 +205,7 @@ export function registerTools() {
     memoryDedupeTool,
     memorySessionTool,
     memoryConfigSetTool,
+    memoryBrainSyncTool,
     // ─── Git automation tools ────────────────────────────────
     worktreeCreateTool,
     worktreeCleanupTool,
@@ -205,6 +213,12 @@ export function registerTools() {
     featureLoopTool,
     // ─── Project context tools ───────────────────────────────
     agentsGenerateTool,
+    // ─── OMX-inspired tools ──────────────────────────────────
+    intentInterviewTool,
+    driftCheckTool,
+    hooksListTool,
+    hooksInitTool,
+    docsSyncTool,
   ];
 }
 
@@ -246,12 +260,27 @@ export async function handleToolCall(
       }
 
       case "task_move": {
-        const newFilename = await moveTask(
-          projectPath,
-          args.task_id as string,
-          args.new_status as TaskStatus,
-        );
-        result = { moved: true, newFilename };
+        const taskId = args.task_id as string;
+        const newStatus = args.new_status as TaskStatus;
+        const newFilename = await moveTask(projectPath, taskId, newStatus);
+
+        // ── Auto-fire lifecycle hook (OMX-inspired) ────────────
+        const hookContent = await getTransitionHookContent(projectPath, newStatus);
+
+        // ── Auto-run drift check on done (OMX-inspired) ────────
+        let driftReport = null;
+        if (newStatus === "done") {
+          try {
+            driftReport = await checkDrift(projectPath, taskId);
+          } catch { /* drift check is advisory */ }
+        }
+
+        result = {
+          moved: true,
+          newFilename,
+          ...(hookContent ? { hook: hookContent } : {}),
+          ...(driftReport ? { drift: driftReport } : {}),
+        };
         break;
       }
 
@@ -397,6 +426,11 @@ export async function handleToolCall(
         break;
       }
 
+      case "memory_brain_sync": {
+        result = await handleMemoryBrainSync(args);
+        break;
+      }
+
       // ─── Git automation tools ─────────────────────────────
       case "worktree_create": {
         result = await handleWorktreeCreate(args);
@@ -420,6 +454,32 @@ export async function handleToolCall(
 
       case "agents_generate": {
         result = await handleAgentsGenerate(args);
+        break;
+      }
+
+      // ── OMX-inspired tools ─────────────────────────────
+      case "intent_interview": {
+        result = await handleIntentInterview(args);
+        break;
+      }
+
+      case "task_drift_check": {
+        result = await handleDriftCheck(args);
+        break;
+      }
+
+      case "hooks_list": {
+        result = await handleHooksList(args);
+        break;
+      }
+
+      case "hooks_init": {
+        result = await handleHooksInit(args);
+        break;
+      }
+
+      case "docs_sync": {
+        result = await handleDocsSync(args);
         break;
       }
 

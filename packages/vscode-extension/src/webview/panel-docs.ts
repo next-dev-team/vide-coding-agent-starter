@@ -37,6 +37,7 @@ function taskStatusBadge(status: string): string {
     todo: { bg: "var(--vscode-charts-blue)", fg: "#fff" },
     wip: { bg: "var(--vscode-charts-yellow)", fg: "#000" },
     done: { bg: "var(--vscode-charts-green)", fg: "#fff" },
+    verified: { bg: "var(--vscode-charts-purple)", fg: "#fff" },
     blocked: { bg: "var(--vscode-charts-red)", fg: "#fff" },
   };
   const c = colors[status] ?? { bg: "var(--vscode-badge-background)", fg: "var(--vscode-badge-foreground)" };

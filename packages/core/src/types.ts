@@ -1,13 +1,14 @@
 // ─── Task Status ───────────────────────────────────────────────
 
 /** The four valid task statuses, encoded as filename prefixes. */
-export type TaskStatus = "todo" | "wip" | "done" | "blocked";
+export type TaskStatus = "todo" | "wip" | "done" | "verified" | "blocked";
 
 /** All valid status prefixes in order. */
 export const TASK_STATUSES: readonly TaskStatus[] = [
   "todo",
   "wip",
   "done",
+  "verified",
   "blocked",
 ] as const;
 

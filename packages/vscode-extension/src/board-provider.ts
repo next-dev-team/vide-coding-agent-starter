@@ -100,6 +100,18 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
         await vscode.window.showTextDocument(doc, { preview: true });
         break;
       }
+      case "syncDocs": {
+        const md = [
+          `# 🔄 Sync Docs`, "",
+          "Run the following in your AI agent to synchronize your documentation with the current codebase:", "",
+          "```",
+          `Call the MCP tool docs_sync with a target file (like docs/prd/0001-feature.md) to check for out-of-sync documentation and reconcile it.`,
+          "```",
+        ].join("\n");
+        const doc = await vscode.workspace.openTextDocument({ content: md, language: "markdown" });
+        await vscode.window.showTextDocument(doc, { preview: true });
+        break;
+      }
       case "compoundLearnings": {
         const taskId = msg.taskId as string | undefined;
         if (!taskId) break;
@@ -790,6 +802,7 @@ async function initAgentsMd(
         lines.push("| ------ | ------- |");
         lines.push("| `todo-` | Not started |");
         lines.push("| `wip-` | In progress |");
+        lines.push("| `verified-` | QA Verified |");
         lines.push("| `done-` | Completed |");
         lines.push("| `blocked-` | Blocked, see Notes section |");
         lines.push("");

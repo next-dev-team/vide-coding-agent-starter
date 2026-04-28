@@ -184,6 +184,48 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("agentKanban.setupCompanion", async (server?: string) => {
       await setupCompanionServer(activeRoot, server || "context7");
     }),
+
+    vscode.commands.registerCommand("agentKanban.openWebview", async (url?: string) => {
+      let targetUrl = url;
+      if (!targetUrl) {
+        targetUrl = await vscode.window.showInputBox({
+          prompt: "Enter URL to open in Webview",
+          placeHolder: "https://docs.flutter.dev",
+        });
+      }
+      if (!targetUrl) return;
+
+      if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
+        targetUrl = "https://" + targetUrl;
+      }
+
+      const panel = vscode.window.createWebviewPanel(
+        "agentKanbanDocViewer",
+        "Doc Viewer",
+        vscode.ViewColumn.Beside,
+        {
+          enableScripts: true,
+          retainContextWhenHidden: true,
+        }
+      );
+
+      panel.webview.html = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body, html { margin: 0; padding: 0; height: 100vh; overflow: hidden; }
+            iframe { width: 100%; height: 100%; border: none; background: white; }
+          </style>
+        </head>
+        <body>
+          <iframe src="${targetUrl}" allow="clipboard-read; clipboard-write"></iframe>
+        </body>
+        </html>
+      `;
+    }),
   );
 
   // ─── Handle workspace folder additions/removals ────────────

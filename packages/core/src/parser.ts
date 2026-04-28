@@ -68,7 +68,7 @@ function escapeRegex(str: string): string {
 // ─── Task Parser ───────────────────────────────────────────────
 
 /** Filename pattern: {status}-{id}-{slug}.md */
-const TASK_FILENAME_RE = /^(todo|wip|done|blocked)-(\w+)-(.+)\.md$/;
+const TASK_FILENAME_RE = /^(todo|wip|verified|done|blocked)-(\w+)-(.+)\.md$/;
 
 /** Parse a task filename into its components. Returns null if invalid. */
 export function parseTaskFilename(

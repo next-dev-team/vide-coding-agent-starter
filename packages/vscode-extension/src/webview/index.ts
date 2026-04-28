@@ -59,6 +59,7 @@ const FULL_SCRIPTS = /*js*/ `
   // ── Workflow actions ───────────────────────────────────────────
   function planFeature()         { vscode.postMessage({ type: 'planFeature' }); }
   function requestReview(type)   { vscode.postMessage({ type: 'requestReview', reviewType: type }); }
+  function syncDocs()            { vscode.postMessage({ type: 'syncDocs' }); }
   function initAgentsMd() {
     var ctx7 = document.getElementById('agents-include-context7');
     var pw   = document.getElementById('agents-include-playwright');

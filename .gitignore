@@ -32,3 +32,4 @@ docs/memory/*.db
 .worktrees/
 # VSIX packages (built artifacts — install locally, don't commit)
 *.vsix
+*.worktrees

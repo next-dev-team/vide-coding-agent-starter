@@ -1,4 +1,4 @@
-import { scanTasks } from "@agent-kanban/core";
+import { scanTasks, scanPrds } from "@agent-kanban/core";
 
 // ── Tool Definition ───────────────────────────────────────────────
 
@@ -6,7 +6,7 @@ import { scanTasks } from "@agent-kanban/core";
 export const featureLoopTool = {
   name: "feature_loop",
   description:
-    "Generate a structured feature-loop plan for a task. Returns a step-by-step orchestration sequence using existing MCP tools (worktree_create, pr_create, compound_learnings, review resources). The caller (IDE agent) executes each step.",
+    "Generate a structured feature-loop plan for a task. Returns a step-by-step orchestration sequence using existing MCP tools (worktree_create, pr_create, compound_learnings, review resources). Auto-includes lifecycle hooks, drift detection, and interview steps. The caller (IDE agent) executes each step.",
   inputSchema: {
     type: "object" as const,
     properties: {
@@ -24,7 +24,7 @@ export const featureLoopTool = {
 /** Step in the feature loop plan. */
 interface LoopStep {
   step: number;
-  phase: "plan" | "worktree" | "implement" | "review" | "pr" | "compound" | "done";
+  phase: "interview" | "plan" | "hook" | "worktree" | "implement" | "drift" | "review" | "pr" | "compound" | "done";
   action: string;
   tool?: string;
   args?: Record<string, unknown>;
@@ -55,7 +55,21 @@ export async function handleFeatureLoop(
   const steps: LoopStep[] = [];
   let stepNum = 1;
 
-  // Step 1: Read & Plan
+  // Step: Check if PRD exists — if not, run interview first
+  const prds = await scanPrds(projectPath);
+  const hasPrd = task.prdRef || prds.length > 0;
+  if (!hasPrd) {
+    steps.push({
+      step: stepNum++,
+      phase: "interview",
+      action: "No PRD found — run intent interview to clarify scope before coding.",
+      tool: "intent_interview",
+      args: { description: task.goal },
+      description: "Clarify intent, edge cases, and constraints. Use answers to create a PRD before proceeding.",
+    });
+  }
+
+  // Step: Read & Plan
   steps.push({
     step: stepNum++,
     phase: "plan",
@@ -65,19 +79,29 @@ export async function handleFeatureLoop(
     description: "Parse the task file to understand goal, acceptance criteria, and files affected.",
   });
 
-  // Step 2: Move to WIP (if not already)
+  // Step: Check memory for related past work
+  steps.push({
+    step: stepNum++,
+    phase: "plan",
+    action: "Search memory for related patterns and past work.",
+    tool: "memory_find",
+    args: { query: task.goal },
+    description: "Check if similar work was done before — reuse patterns, avoid known pitfalls.",
+  });
+
+  // Step: Move to WIP (auto-triggers on-task-start hook)
   if (task.status !== "wip") {
     steps.push({
       step: stepNum++,
-      phase: "plan",
-      action: "Move task to WIP status.",
+      phase: "hook",
+      action: "Move task to WIP — this auto-fires the on-task-start lifecycle hook.",
       tool: "task_move",
       args: { task_id: taskId, new_status: "wip" },
-      description: "Signal that work has started on this task.",
+      description: "Signal work has started. The response includes hook instructions — follow them.",
     });
   }
 
-  // Step 3: Create worktree (optional)
+  // Step: Create worktree (optional)
   if (!skipWorktree) {
     steps.push({
       step: stepNum++,
@@ -89,7 +113,7 @@ export async function handleFeatureLoop(
     });
   }
 
-  // Step 4: Implement
+  // Step: Implement
   steps.push({
     step: stepNum++,
     phase: "implement",
@@ -98,7 +122,17 @@ export async function handleFeatureLoop(
     description: `Implement the goal: "${task.goal}". Check acceptance criteria as you go. Run \`pnpm build\` and \`pnpm test\`.`,
   });
 
-  // Step 5: Security Review
+  // Step: Drift check before review
+  steps.push({
+    step: stepNum++,
+    phase: "drift",
+    action: "Run drift check — verify changes match the planned scope.",
+    tool: "task_drift_check",
+    args: { task_id: taskId },
+    description: "Compare actual git diff against expected file scope from the task. Fix any unexpected changes before proceeding.",
+  });
+
+  // Step: Security Review
   steps.push({
     step: stepNum++,
     phase: "review",
@@ -106,7 +140,7 @@ export async function handleFeatureLoop(
     description: "Read the MCP resource kanban://review/security and review staged changes against it.",
   });
 
-  // Step 6: Performance Review
+  // Step: Performance Review
   steps.push({
     step: stepNum++,
     phase: "review",
@@ -114,7 +148,7 @@ export async function handleFeatureLoop(
     description: "Read the MCP resource kanban://review/performance and review staged changes against it.",
   });
 
-  // Step 7: Create PR
+  // Step: Create PR
   steps.push({
     step: stepNum++,
     phase: "pr",
@@ -124,17 +158,17 @@ export async function handleFeatureLoop(
     description: "Create a draft PR with the task title and acceptance criteria pre-filled.",
   });
 
-  // Step 8: Move to Done
+  // Step: Move to Done (auto-triggers on-task-done hook + drift report)
   steps.push({
     step: stepNum++,
     phase: "done",
-    action: "Move task to done status.",
+    action: "Move task to done — this auto-fires the on-task-done hook and drift report.",
     tool: "task_move",
     args: { task_id: taskId, new_status: "done" },
-    description: "Mark the task as completed.",
+    description: "Mark the task as completed. The response includes a final drift report and done checklist — verify all items.",
   });
 
-  // Step 9: Compound Learnings
+  // Step: Compound Learnings
   steps.push({
     step: stepNum++,
     phase: "compound",

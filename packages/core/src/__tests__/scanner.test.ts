@@ -162,8 +162,8 @@ describe("nextId", () => {
 describe("scanBoard", () => {
   it("returns board with four columns in order", async () => {
     const board = await scanBoard(TMP);
-    expect(board.columns).toHaveLength(4);
-    expect(board.columns.map((c) => c.status)).toEqual(["todo", "wip", "done", "blocked"]);
+    expect(board.columns).toHaveLength(5);
+    expect(board.columns.map((c) => c.status)).toEqual(["todo", "wip", "verified", "done", "blocked"]);
   });
 
   it("returns empty board when no tasks exist", async () => {

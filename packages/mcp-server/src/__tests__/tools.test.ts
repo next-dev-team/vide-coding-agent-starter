@@ -296,3 +296,13 @@ describe("adr_create", () => {
     expect(content).toContain("The decision paragraph");
   });
 });
+
+// ─── memory_brain_sync ───────────────────────────────────────────────────────
+
+describe("memory_brain_sync", () => {
+  it("generates PROJECT_BRAIN.md and returns synced true", async () => {
+    const result = await call("memory_brain_sync", { project_path: TMP });
+    expect(json(result)).toMatchObject({ synced: true, totalMemories: expect.any(Number) });
+    expect(existsSync(join(TMP, "docs", "PROJECT_BRAIN.md"))).toBe(true);
+  });
+});

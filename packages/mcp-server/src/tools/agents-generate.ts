@@ -1,6 +1,7 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join, relative, basename } from "node:path";
 import { existsSync } from "node:fs";
+import { handleMemoryBrainSync } from "./memory-brain-sync.js";
 
 // ── Tool Definition ───────────────────────────────────────────────
 
@@ -298,6 +299,14 @@ function generateAgentsMd(ctx: ProjectContext): string {
     lines.push("");
   }
 
+  // Project Brain
+  if (ctx.hasDocsDir) {
+    lines.push("## Project Brain", "");
+    lines.push("To get holistic context, conventions, and architectural details about this project, read:");
+    lines.push("- **[`docs/PROJECT_BRAIN.md`](docs/PROJECT_BRAIN.md)**", "");
+    lines.push("It is automatically synthesized from the project's memory engine.", "");
+  }
+
   // Tech Stack
   lines.push("## Tech Stack", "");
   lines.push("| Layer | Choice | Notes |");
@@ -421,6 +430,12 @@ export async function handleAgentsGenerate(
     const { writeFile: wf } = await import("node:fs/promises");
     const agentsPath = join(projectPath, "AGENTS.md");
     await wf(agentsPath, content, "utf-8");
+
+    try {
+      await handleMemoryBrainSync({ project_path: projectPath });
+    } catch {
+      // ignore if memory store isn't initialized yet
+    }
   }
 
   // Return context without the large structure array for JSON output

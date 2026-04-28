@@ -17,7 +17,7 @@ export function renderCardList(board: Board, status: string): string {
     const total = task.acceptance.length;
     const checked = task.acceptance.filter(a => a.checked).length;
     const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
-    const moveTargets = ["todo", "wip", "done", "blocked"].filter(s => s !== task.status);
+    const moveTargets = ["todo", "wip", "verified", "done", "blocked"].filter(s => s !== task.status);
     return `
     <div class="card" data-status="${task.status}" onclick="openFile('${task.filename}')">
       <div class="card-header"><div class="card-id">#${task.id}</div></div>
@@ -44,12 +44,13 @@ export function renderWorkflowTools(): string {
         <button class="move-btn" style="flex:1;font-size:10px" onclick="requestReview('security')">🔒 Security Review</button>
         <button class="move-btn" style="flex:1;font-size:10px" onclick="requestReview('performance')">⚡ Performance Review</button>
       </div>
+      <button class="move-btn" style="padding:6px 0;font-size:11px" onclick="syncDocs()">🔄 Sync Docs</button>
     </div>`;
 }
 
 /** Renders the Kanban overview panel with accordions. */
 export function renderKanbanPanel(board: Board): string {
-  const allStatuses = ["todo", "wip", "blocked", "done"];
+  const allStatuses = ["todo", "wip", "verified", "blocked", "done"];
   const defaultOpen = new Set(["todo", "wip"]);
 
   const columnSections = allStatuses.map(status => {
@@ -99,11 +100,12 @@ export function renderWorkflowPanel(): string {
 
 /** Renders a flat table of ALL tasks across all statuses. */
 export function renderTablePanel(board: Board): string {
-  const allStatuses = ["todo", "wip", "blocked", "done"] as const;
-  const statusEmoji: Record<string, string> = { todo: "🔵", wip: "🟡", blocked: "🔴", done: "🟢" };
+  const allStatuses = ["todo", "wip", "verified", "blocked", "done"] as const;
+  const statusEmoji: Record<string, string> = { todo: "🔵", wip: "🟡", verified: "🟣", blocked: "🔴", done: "🟢" };
   const statusColor: Record<string, string> = {
     todo: "var(--vscode-charts-blue)",
     wip: "var(--vscode-charts-yellow)",
+    verified: "var(--vscode-charts-purple)",
     blocked: "var(--vscode-charts-red)",
     done: "var(--vscode-charts-green)",
   };
@@ -136,7 +138,7 @@ export function renderTablePanel(board: Board): string {
     const total = task.acceptance.length;
     const checked = task.acceptance.filter(a => a.checked).length;
     const pct = total > 0 ? Math.round((checked / total) * 100) : -1;
-    const moveTargets = (["todo", "wip", "blocked", "done"] as const).filter(s => s !== task.status);
+    const moveTargets = (["todo", "wip", "verified", "blocked", "done"] as const).filter(s => s !== task.status);
     return `
     <tr class="tbl-row" data-status="${task.status}" onclick="openFile('${task.filename}')">
       <td class="tbl-status">
