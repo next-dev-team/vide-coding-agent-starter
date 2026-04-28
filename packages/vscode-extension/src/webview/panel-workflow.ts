@@ -1,5 +1,5 @@
 /** Renders the Workflow panel — agent tools, reviews, and project settings. */
-export function renderWorkflowPanel(): string {
+export function renderWorkflowPanel(version = ""): string {
   return `
   <!-- Agent Tools -->
   <div class="wf-group">
@@ -85,7 +85,7 @@ export function renderWorkflowPanel(): string {
   <!-- About -->
   <div class="wf-group" style="opacity:0.7;margin-top:8px">
     <div class="wf-hint" style="text-align:center;padding:8px 0">
-      <strong>Agent Kanban v0.1.4</strong> ·
+      ${version ? `<strong>Agent Kanban v${version}</strong> · ` : ""}
       <a href="#" onclick="openDocs();return false" style="color:var(--vscode-textLink-foreground);text-decoration:none">📖 Docs</a>
     </div>
   </div>`;

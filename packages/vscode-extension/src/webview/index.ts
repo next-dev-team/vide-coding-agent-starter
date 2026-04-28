@@ -155,7 +155,7 @@ const FULL_SCRIPTS = /*js*/ `
  * Builds the full single-webview HTML with a horizontal tab bar at the top.
  * Tabs: 📋 Kanban | ⚙️ Skills | 🔄 Workflow | 🔌 MCP | 🧠 Memory
  */
-export function getHtml(board: Board, skills: SkillInfo[] = []): string {
+export function getHtml(board: Board, skills: SkillInfo[] = [], version = ""): string {
   return /*html*/ `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -185,7 +185,7 @@ export function getHtml(board: Board, skills: SkillInfo[] = []): string {
   </div>
 
   <div class="tab-panel" id="panel-workflow">
-    ${renderWorkflowPanel()}
+    ${renderWorkflowPanel(version)}
   </div>
 
   <div class="tab-panel" id="panel-mcp">

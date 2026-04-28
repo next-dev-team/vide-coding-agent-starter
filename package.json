@@ -8,7 +8,9 @@
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
     "clean": "pnpm -r clean",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "build:core": "pnpm --filter @agent-kanban/core build",
+    "build:vscode": "pnpm run build:core && pnpm --filter agent-kanban-vscode version:bump && pnpm --filter agent-kanban-vscode build && pnpm --filter agent-kanban-vscode package:root"
   },
   "engines": {
     "node": ">=20",

@@ -97,13 +97,14 @@ export function parseTask(filename: string, markdown: string): Task {
   const questionsSection = extractSection(markdown, "Open Questions");
   const notesSection = extractSection(markdown, "Notes");
 
+  const rawPrdRef = extractBlockquoteField(markdown, "PRD");
   return {
     id: parsed.id,
     slug: parsed.slug,
     status: parsed.status,
     filename,
     goal: goalSection.split("\n")[0] || "",
-    prdRef: extractBlockquoteField(markdown, "PRD"),
+    prdRef: rawPrdRef === "(none)" ? null : rawPrdRef,
     created: extractBlockquoteField(markdown, "Created"),
     acceptance: parseCheckboxes(acceptanceSection),
     filesAffected: parseBullets(filesSection),

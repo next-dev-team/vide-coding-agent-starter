@@ -22,7 +22,6 @@ Thumbs.db
 
 # Logs
 *.log
-packages/vscode-extension/agent-kanban-vscode-0.1.0.vsix
 
 # Agent Kanban runtime (DB + config — gitignored; docs/memory/*.md committed)
 .agent-kanban/
@@ -31,4 +30,5 @@ docs/memory/*.db
 
 # Git worktrees (created by task automation)
 .worktrees/
-.vsix
+# VSIX packages (built artifacts — install locally, don't commit)
+*.vsix

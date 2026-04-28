@@ -29,6 +29,7 @@ export {
 
 export {
   padId,
+  sanitizeSlug,
   writeTask,
   taskFilename,
   writePrd,

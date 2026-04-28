@@ -7,6 +7,19 @@ export function padId(n: number): string {
   return String(n).padStart(4, "0");
 }
 
+/**
+ * Sanitize a user-provided string into a safe kebab-case slug.
+ * Lowercases, strips non-alphanum, collapses dashes, caps at 60 chars.
+ */
+export function sanitizeSlug(raw: string): string {
+  const slug = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  return slug || "untitled";
+}
+
 /** Format today's date as YYYY-MM-DD. */
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -101,7 +114,7 @@ export function taskFilename(
   slug: string,
   status: string = "todo",
 ): string {
-  return `${status}-${id}-${slug}.md`;
+  return `${status}-${id}-${sanitizeSlug(slug)}.md`;
 }
 
 // ─── PRD Writer ────────────────────────────────────────────────
@@ -179,7 +192,7 @@ ${questions.length > 0 ? renderBullets(questions) : "- (none)"}
 
 /** Generate the filename for a new PRD. */
 export function prdFilename(id: string, slug: string): string {
-  return `${id}-${slug}.md`;
+  return `${id}-${sanitizeSlug(slug)}.md`;
 }
 
 // ─── ADR Writer ────────────────────────────────────────────────
@@ -245,5 +258,5 @@ ${negative.length > 0 ? renderBullets(negative) : "- (TBD)"}
 
 /** Generate the filename for a new ADR. */
 export function adrFilename(id: string, slug: string): string {
-  return `${id}-${slug}.md`;
+  return `${id}-${sanitizeSlug(slug)}.md`;
 }

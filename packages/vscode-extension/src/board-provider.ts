@@ -12,13 +12,23 @@ import type { SkillInfo } from "./webview/panel-skills.js";
 /** Provides the unified Kanban board webview in the sidebar (Tabs: Kanban, Monitor, Settings). */
 export class BoardViewProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
+  private readonly _version: string;
   /** Session memory access snapshot — updated by clearSession or external push. */
   private _sessionSnapshot: Array<{ filePath: string; tierLoaded: string; tokensUsed: number; fullTokenCount: number; loadedAt: string }> = [];
 
   constructor(
     private readonly extensionUri: vscode.Uri,
-    private readonly workspaceRoot: string,
-  ) { }
+    private workspaceRoot: string,
+    version = "",
+  ) {
+    this._version = version;
+  }
+
+  /** Switch the active project root and refresh the board. */
+  setWorkspaceRoot(path: string) {
+    this.workspaceRoot = path;
+    void this.refresh();
+  }
 
   /** Cached skills list — refreshed on scan. */
   private _skills: SkillInfo[] = [];
@@ -320,7 +330,7 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
     if (!this._view) return;
     try {
       const board = await scanBoard(this.workspaceRoot);
-      this._view.webview.html = getHtml(board, this._skills);
+      this._view.webview.html = getHtml(board, this._skills, this._version);
     } catch {
       this._view.webview.html = getErrorHtml();
     }

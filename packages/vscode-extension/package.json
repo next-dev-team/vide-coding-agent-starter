@@ -2,7 +2,7 @@
   "name": "agent-kanban-vscode",
   "displayName": "Agent Kanban",
   "description": "Trello-like Kanban board for markdown-based task management — works with AI agents via MCP",
-  "version": "0.1.4",
+  "version": "0.1.6",
   "publisher": "agent-kanban",
   "repository": {
     "type": "git",
@@ -46,6 +46,11 @@
         "command": "agentKanban.setupMcpServer",
         "title": "Setup MCP Server (GitHub Copilot)",
         "category": "Agent Kanban"
+      },
+      {
+        "command": "agentKanban.selectProject",
+        "title": "Select Project",
+        "category": "Agent Kanban"
       }
     ],
     "viewsContainers": {
@@ -73,6 +78,8 @@
     "clean": "rimraf dist *.tsbuildinfo",
     "typecheck": "tsc --noEmit",
     "package": "vsce package --no-dependencies",
+    "version:bump": "npm version patch --no-git-tag-version",
+    "package:root": "vsce package --no-dependencies --out ../../",
     "test": "echo 'no tests yet'",
     "lint": "echo 'no lint yet'"
   },
