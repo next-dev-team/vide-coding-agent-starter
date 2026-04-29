@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Board, Task, TaskStatus } from "$lib/types";
+  import type { Board, Column, Task, TaskStatus, WorkspaceInfo } from "$lib/types";
   import { getVsCode } from "$lib/vscode";
   import TaskCard from "$lib/components/TaskCard.svelte";
   import TaskDetailModal from "$lib/components/TaskDetailModal.svelte";
@@ -7,7 +7,46 @@
   import Badge from "$lib/components/ui/badge.svelte";
   import Button from "$lib/components/ui/button.svelte";
 
-  let { board } = $props<{ board: Board }>();
+  let { board, workspaces = [] } = $props<{ board: Board; workspaces?: WorkspaceInfo[] }>();
+
+  // Active workspace filter — empty set means "show all"
+  // Initialize from the active flags sent by the extension
+  let selectedPaths = $state<Set<string>>(
+    workspaces.every(w => w.active !== false)
+      ? new Set()
+      : new Set(workspaces.filter(w => w.active).map(w => w.path)),
+  );
+
+  function selectAll() {
+    selectedPaths = new Set();
+    vscode.postMessage({ type: "setActiveWorkspaces", paths: workspaces.map(w => w.path) });
+  }
+
+  function toggleWorkspace(path: string) {
+    const next = new Set(selectedPaths);
+    if (next.has(path)) {
+      next.delete(path);
+    } else {
+      next.add(path);
+    }
+    // Empty selection → treat as "all"
+    if (next.size === 0) {
+      selectedPaths = new Set();
+      vscode.postMessage({ type: "setActiveWorkspaces", paths: workspaces.map(w => w.path) });
+    } else {
+      selectedPaths = next;
+      vscode.postMessage({ type: "setActiveWorkspaces", paths: Array.from(next) });
+    }
+  }
+
+  const filteredColumns = $derived(
+    selectedPaths.size === 0 || workspaces.length === 0
+      ? board.columns
+      : board.columns.map((col: Column): Column => ({
+          ...col,
+          tasks: col.tasks.filter((t: Task) => !t.projectRoot || selectedPaths.has(t.projectRoot)),
+        }))
+  );
 
   const vscode = getVsCode<{ open: Record<TaskStatus, boolean> }>();
   const persisted = vscode.getState();
@@ -52,8 +91,23 @@
     </Button>
   </div>
 
+  <!-- Workspace filter chips (multi-root only) -->
+  {#if workspaces.length > 1}
+    <div class="ws-filter">
+      <button class="ws-chip" class:ws-active={selectedPaths.size === 0} onclick={selectAll}>All</button>
+      {#each workspaces as ws (ws.path)}
+        <button
+          class="ws-chip"
+          class:ws-active={selectedPaths.has(ws.path)}
+          onclick={() => toggleWorkspace(ws.path)}
+          title={ws.path}
+        >{ws.name}</button>
+      {/each}
+    </div>
+  {/if}
+
   <!-- Columns -->
-  {#each board.columns as column (column.status)}
+  {#each filteredColumns as column (column.status)}
     {@const isOpen = open[column.status]}
     {@const count = column.tasks.length}
     <section class="column" class:has-tasks={count > 0}>
@@ -184,5 +238,38 @@
   .empty-icon {
     opacity: 0.4;
     font-style: normal;
+  }
+
+  .ws-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 0 0 8px;
+  }
+
+  .ws-chip {
+    padding: 2px 8px;
+    border-radius: 99px;
+    border: 1px solid var(--color-border);
+    background: none;
+    color: var(--color-muted-foreground);
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.12s ease;
+    white-space: nowrap;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ws-chip:hover {
+    background: var(--color-accent);
+    color: var(--color-foreground);
+  }
+  .ws-chip.ws-active {
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+    border-color: var(--color-primary);
   }
 </style>

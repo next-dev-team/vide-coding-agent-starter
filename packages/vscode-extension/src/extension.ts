@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { BoardViewProvider } from "./board-provider.js";
+import type { WorkspaceEntry } from "./board-provider.js";
 import { BoardPanel } from "./board-panel.js";
 import { DocsPanel } from "./docs-panel.js";
 import { StatusBarManager } from "./status-bar.js";
@@ -18,39 +19,42 @@ export async function activate(context: vscode.ExtensionContext) {
   const folders = vscode.workspace.workspaceFolders;
   if (!folders || folders.length === 0) return;
 
-  // ─── Resolve active project ────────────────────────────────
+  // ─── Resolve active projects ───────────────────────────────
   const multiRoot = folders.length > 1;
-  let activeRoot: string;
+  let activeRoots: WorkspaceEntry[];
 
   if (!multiRoot) {
-    activeRoot = folders[0].uri.fsPath;
+    activeRoots = [{ name: folders[0].name, path: folders[0].uri.fsPath }];
   } else {
-    const stored = context.workspaceState.get<string>("agentKanban.activeProjectRoot");
-    if (stored && folders.some(f => f.uri.fsPath === stored)) {
-      activeRoot = stored;
+    const stored = context.workspaceState.get<string[]>("agentKanban.activeProjectRoots");
+    if (stored && stored.length > 0 && stored.every(p => folders.some(f => f.uri.fsPath === p))) {
+      activeRoots = stored.map(p => {
+        const f = folders.find(f => f.uri.fsPath === p)!;
+        return { name: f.name, path: p };
+      });
     } else {
-      // Prompt user to pick when no valid stored preference exists
-      const picked = await vscode.window.showQuickPick(
-        folders.map(f => ({ label: f.name, description: f.uri.fsPath, folder: f })),
-        { placeHolder: "Agent Kanban: Select project to manage" },
-      );
-      activeRoot = picked ? picked.folder.uri.fsPath : folders[0].uri.fsPath;
-      await context.workspaceState.update("agentKanban.activeProjectRoot", activeRoot);
+      // Default: all workspace folders
+      activeRoots = folders.map(f => ({ name: f.name, path: f.uri.fsPath }));
+      await context.workspaceState.update("agentKanban.activeProjectRoots", activeRoots.map(r => r.path));
     }
   }
 
+  const primaryRoot = () => activeRoots[0]?.path ?? folders[0].uri.fsPath;
+
   // ─── Kanban Board Webview ──────────────────────────────────
   const pkgVersion = (context.extension.packageJSON as { version?: string }).version ?? "";
-  const boardProvider = new BoardViewProvider(context.extensionUri, activeRoot, pkgVersion);
+  const boardProvider = new BoardViewProvider(context.extensionUri, activeRoots, pkgVersion);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider("agentKanban.boardView", boardProvider),
   );
 
   // ─── Status Bar ────────────────────────────────────────────
-  const statusBar = new StatusBarManager(activeRoot);
+  const statusBar = new StatusBarManager(primaryRoot());
   if (multiRoot) {
-    const activeFolder = folders.find(f => f.uri.fsPath === activeRoot) ?? folders[0];
-    statusBar.setProject(activeRoot, activeFolder.name, true);
+    const label = activeRoots.length === folders.length ? "All" :
+                  activeRoots.length === 1 ? activeRoots[0].name :
+                  `${activeRoots.length} projects`;
+    statusBar.setProject(primaryRoot(), label, true);
   }
   context.subscriptions.push(statusBar);
   statusBar.update();
@@ -58,59 +62,72 @@ export async function activate(context: vscode.ExtensionContext) {
   // ─── File Watchers (re-created on project switch) ──────────
   let projectWatchers: vscode.Disposable[] = [];
 
-  function registerWatchers(root: string) {
+  function registerWatchers(roots: string[]) {
     for (const w of projectWatchers) w.dispose();
     projectWatchers = [];
 
     const refresh = debounce(() => {
       void boardProvider.refresh();
       void statusBar.update();
-      // Notify wide panels if open. Static `current` returns undefined when not.
       void BoardPanel["current"]?.refresh();
       void DocsPanel["current"]?.refresh();
     }, 300);
 
-    const w1 = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(root, "docs/tasks/*.md"),
-    );
-    w1.onDidChange(refresh); w1.onDidCreate(refresh); w1.onDidDelete(refresh);
-    projectWatchers.push(w1);
+    for (const root of roots) {
+      const w1 = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(root, "docs/tasks/*.md"),
+      );
+      w1.onDidChange(refresh); w1.onDidCreate(refresh); w1.onDidDelete(refresh);
+      projectWatchers.push(w1);
 
-    const w2 = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(root, "docs/tasks/done/*.md"),
-    );
-    w2.onDidChange(refresh); w2.onDidCreate(refresh); w2.onDidDelete(refresh);
-    projectWatchers.push(w2);
+      const w2 = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(root, "docs/tasks/done/*.md"),
+      );
+      w2.onDidChange(refresh); w2.onDidCreate(refresh); w2.onDidDelete(refresh);
+      projectWatchers.push(w2);
 
-    const w3 = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(root, ".agents/skills/**/*.md"),
-    );
-    w3.onDidChange(() => { void boardProvider.refresh(); });
-    w3.onDidCreate(() => { void boardProvider.refresh(); });
-    w3.onDidDelete(() => { void boardProvider.refresh(); });
-    projectWatchers.push(w3);
+      const w3 = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(root, ".agents/skills/**/*.md"),
+      );
+      w3.onDidChange(() => { void boardProvider.refresh(); });
+      w3.onDidCreate(() => { void boardProvider.refresh(); });
+      w3.onDidDelete(() => { void boardProvider.refresh(); });
+      projectWatchers.push(w3);
 
-    const w4 = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(root, "docs/{prd,decisions,test-cases}/*.md"),
-    );
-    w4.onDidChange(refresh); w4.onDidCreate(refresh); w4.onDidDelete(refresh);
-    projectWatchers.push(w4);
+      const w4 = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(root, "docs/{prd,decisions,test-cases}/*.md"),
+      );
+      w4.onDidChange(refresh); w4.onDidCreate(refresh); w4.onDidDelete(refresh);
+      projectWatchers.push(w4);
+
+      const w5 = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(root, "{src/locales,public/locales,locales,i18n,src/i18n,src/assets/i18n,assets/i18n}/**/*.json"),
+      );
+      w5.onDidChange(refresh); w5.onDidCreate(refresh); w5.onDidDelete(refresh);
+      projectWatchers.push(w5);
+    }
   }
 
-  registerWatchers(activeRoot);
+  registerWatchers(activeRoots.map(r => r.path));
   context.subscriptions.push({ dispose: () => { for (const w of projectWatchers) w.dispose(); } });
 
   // ─── Project switch helper ─────────────────────────────────
-  async function switchProject(newRoot: string, name: string) {
-    activeRoot = newRoot;
-    await context.workspaceState.update("agentKanban.activeProjectRoot", newRoot);
-    boardProvider.setWorkspaceRoot(newRoot);
-    BoardPanel["current"]?.setWorkspaceRoot(newRoot);
-    DocsPanel["current"]?.setWorkspaceRoot(newRoot);
-    statusBar.setProject(newRoot, name, true);
+  async function switchProjects(newRoots: WorkspaceEntry[]) {
+    activeRoots = newRoots;
+    await context.workspaceState.update("agentKanban.activeProjectRoots", newRoots.map(r => r.path));
+    boardProvider.setWorkspaceRoots(newRoots);
+    const allFolders = vscode.workspace.workspaceFolders ?? [];
+    const label = newRoots.length === allFolders.length ? "All" :
+                  newRoots.length === 1 ? newRoots[0].name :
+                  `${newRoots.length} projects`;
+    BoardPanel["current"]?.setWorkspaceRoot(primaryRoot());
+    DocsPanel["current"]?.setWorkspaceRoot(primaryRoot());
+    statusBar.setProject(primaryRoot(), label, multiRoot);
     void statusBar.update();
-    registerWatchers(newRoot);
+    registerWatchers(newRoots.map(r => r.path));
   }
+
+  boardProvider.onSwitchWorkspaces = switchProjects;
 
   // ─── Commands ──────────────────────────────────────────────
   context.subscriptions.push(
@@ -129,18 +146,24 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage("Only one workspace folder is open.");
         return;
       }
-      const picked = await vscode.window.showQuickPick(
-        current.map(f => ({
-          label: f.name,
-          description: f.uri.fsPath,
-          detail: f.uri.fsPath === activeRoot ? "$(check) Active" : "",
-          folder: f,
-        })),
-        { placeHolder: "Select project for Agent Kanban" },
-      );
-      if (!picked || picked.folder.uri.fsPath === activeRoot) return;
-      await switchProject(picked.folder.uri.fsPath, picked.folder.name);
-      vscode.window.showInformationMessage(`Agent Kanban: Switched to "${picked.folder.name}"`);
+      const activePathSet = new Set(activeRoots.map(r => r.path));
+      const items = current.map(f => ({
+        label: f.name,
+        description: f.uri.fsPath,
+        picked: activePathSet.has(f.uri.fsPath),
+        folder: f,
+      }));
+      const picked = await vscode.window.showQuickPick(items, {
+        canPickMany: true,
+        placeHolder: "Select workspaces for Agent Kanban (all = default)",
+      });
+      if (!picked || picked.length === 0) return;
+      const newRoots: WorkspaceEntry[] = picked.map(p => ({ name: p.folder.name, path: p.folder.uri.fsPath }));
+      await switchProjects(newRoots);
+      const label = newRoots.length === current.length ? "all workspaces" :
+                    newRoots.length === 1 ? `"${newRoots[0].name}"` :
+                    `${newRoots.length} workspaces`;
+      vscode.window.showInformationMessage(`Agent Kanban: Showing ${label}`);
     }),
 
     vscode.commands.registerCommand("agentKanban.createTask", async () => {
@@ -157,10 +180,10 @@ export async function activate(context: vscode.ExtensionContext) {
       });
       if (!slug) return;
 
-      const id = await nextId(activeRoot, "task");
+      const id = await nextId(primaryRoot(), "task");
       const content = writeTask({ id, title: slug.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()), goal });
       const fname = taskFilename(id, slug);
-      const filePath = join(activeRoot, "docs", "tasks", fname);
+      const filePath = join(primaryRoot(), "docs", "tasks", fname);
       await writeFile(filePath, content, "utf-8");
 
       const doc = await vscode.workspace.openTextDocument(filePath);
@@ -181,11 +204,11 @@ export async function activate(context: vscode.ExtensionContext) {
       });
       if (!problem) return;
 
-      const id = await nextId(activeRoot, "prd");
+      const id = await nextId(primaryRoot(), "prd");
       const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
       const content = writePrd({ id, title, problem });
       const fname = prdFilename(id, slug);
-      const filePath = join(activeRoot, "docs", "prd", fname);
+      const filePath = join(primaryRoot(), "docs", "prd", fname);
       await writeFile(filePath, content, "utf-8");
 
       const doc = await vscode.workspace.openTextDocument(filePath);
@@ -194,16 +217,16 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand("agentKanban.setupMcpServer", async (target?: string) => {
-      await setupMcpServer(activeRoot, context, target || "vscode");
+      await setupMcpServer(primaryRoot(), context, target || "vscode");
     }),
 
     vscode.commands.registerCommand("agentKanban.setupCompanion", async (server?: string) => {
-      await setupCompanionServer(activeRoot, server || "context7");
+      await setupCompanionServer(primaryRoot(), server || "context7");
     }),
 
     vscode.commands.registerCommand("agentKanban.openWideBoard", async () => {
       try {
-        await BoardPanel.createOrShow(context.extensionPath, activeRoot);
+        await BoardPanel.createOrShow(context.extensionPath, primaryRoot());
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         vscode.window.showErrorMessage(`Wide board failed to load: ${message}`);
@@ -212,7 +235,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand("agentKanban.openDocsPanel", async () => {
       try {
-        await DocsPanel.createOrShow(context.extensionPath, activeRoot);
+        await DocsPanel.createOrShow(context.extensionPath, primaryRoot());
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         vscode.window.showErrorMessage(`Docs panel failed to load: ${message}`);
@@ -267,25 +290,31 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
       const updated = vscode.workspace.workspaceFolders;
       if (!updated || updated.length === 0) return;
-      const stillValid = updated.some(f => f.uri.fsPath === activeRoot);
-      if (!stillValid) {
-        void switchProject(updated[0].uri.fsPath, updated[0].name);
+      const updatedPaths = new Set(updated.map(f => f.uri.fsPath));
+      const stillValid = activeRoots.filter(r => updatedPaths.has(r.path));
+      if (stillValid.length === 0) {
+        void switchProjects([{ name: updated[0].name, path: updated[0].uri.fsPath }]);
         vscode.window.showInformationMessage(`Agent Kanban: Switched to "${updated[0].name}"`);
+      } else if (stillValid.length < activeRoots.length) {
+        void switchProjects(stillValid);
       }
     }),
   );
 
-  // ─── First-run: prompt MCP setup if .vscode/mcp.json missing ──
-  const mcpJsonPath = join(activeRoot, ".vscode", "mcp.json");
-  if (!existsSync(mcpJsonPath)) {
+  // ─── First-run: prompt MCP setup once per workspace ──────────
+  const mcpPromptDismissed = context.workspaceState.get<boolean>("agentKanban.mcpPromptDismissed");
+  const mcpJsonPath = join(primaryRoot(), ".vscode", "mcp.json");
+  if (!existsSync(mcpJsonPath) && !mcpPromptDismissed) {
     const choice = await vscode.window.showInformationMessage(
       "Agent Kanban: No MCP server config found. Set it up now so AI agents (Copilot, etc.) can manage your Kanban board?",
       "Set Up MCP",
       "Not Now",
     );
     if (choice === "Set Up MCP") {
-      await setupMcpServer(activeRoot, context, "vscode");
+      await setupMcpServer(primaryRoot(), context, "vscode");
     }
+    // Remember the decision so we don't prompt on every workspace open
+    await context.workspaceState.update("agentKanban.mcpPromptDismissed", true);
   }
 }
 

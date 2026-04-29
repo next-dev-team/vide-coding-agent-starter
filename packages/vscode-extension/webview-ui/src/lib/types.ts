@@ -24,6 +24,14 @@ export interface Task {
   approach?: string[];
   openQuestions?: string[];
   notes?: string[];
+  projectRoot?: string;
+  projectName?: string;
+}
+
+export interface WorkspaceInfo {
+  name: string;
+  path: string;
+  active?: boolean;
 }
 
 export interface Column {
@@ -40,22 +48,23 @@ export interface Board {
 /** Messages: webview → host */
 export type OutboundMessage =
   | { type: "refresh" }
-  | { type: "openFile"; filename: string }
-  | { type: "moveTask"; taskId: string; newStatus: TaskStatus }
+  | { type: "setActiveWorkspaces"; paths: string[] }
+  | { type: "openFile"; filename: string; projectRoot?: string }
+  | { type: "moveTask"; taskId: string; newStatus: TaskStatus; projectRoot?: string }
   | { type: "createTask" }
   | { type: "createPrd" }
-  | { type: "compoundLearnings"; taskId: string }
-  | { type: "worktreeCreate"; taskId: string }
-  | { type: "worktreeCleanup"; taskId: string }
-  | { type: "createPr"; taskId: string }
-  | { type: "startFeatureLoop"; taskId: string }
+  | { type: "compoundLearnings"; taskId: string; projectRoot?: string }
+  | { type: "worktreeCreate"; taskId: string; projectRoot?: string }
+  | { type: "worktreeCleanup"; taskId: string; projectRoot?: string }
+  | { type: "createPr"; taskId: string; projectRoot?: string }
+  | { type: "startFeatureLoop"; taskId: string; projectRoot?: string }
   | { type: "startFeatureLoopAll" }
   | { type: "syncAll" }
   | { type: "openPrd"; filename: string }
   | { type: "openAdr"; filename: string }
   | { type: "openTestCase"; filename: string }
-  | { type: "tickAcceptance"; taskId: string; index: number }
-  | { type: "untickAcceptance"; taskId: string; index: number };
+  | { type: "tickAcceptance"; taskId: string; index: number; projectRoot?: string }
+  | { type: "untickAcceptance"; taskId: string; index: number; projectRoot?: string };
 
 export interface DocEntry {
   filename: string;
@@ -82,6 +91,6 @@ export interface SkillInfo {
 
 /** Messages: host → webview */
 export type InboundMessage =
-  | { type: "boardUpdated"; board: Board; docs?: DocsData; skills?: SkillInfo[] }
+  | { type: "boardUpdated"; board: Board; docs?: DocsData; skills?: SkillInfo[]; workspaces?: WorkspaceInfo[] }
   | { type: "docsUpdated"; docs: DocsData }
   | { type: "error"; message: string };

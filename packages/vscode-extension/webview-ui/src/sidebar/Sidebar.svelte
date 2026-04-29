@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import type { Board, DocsData, SkillInfo } from "$lib/types";
+  import type { Board, DocsData, SkillInfo, WorkspaceInfo } from "$lib/types";
   import { getVsCode, onMessage } from "$lib/vscode";
   import { demoBoard } from "$lib/demo-board";
 
@@ -21,6 +21,7 @@
   let skills = $state<SkillInfo[]>([]);
   let knowledge = $state<any>({ brainContent: "", brainExists: false, memories: [], categories: {}, totalMemories: 0 });
   let version = $state<string>("");
+  let workspaces = $state<WorkspaceInfo[]>([]);
 
   let activeTab = $state<string>(vscode.getState()?.activeTab || "kanban");
 
@@ -65,6 +66,7 @@
         if (msg.skills) skills = msg.skills;
         if (msg.knowledge) knowledge = msg.knowledge;
         if (msg.version) version = msg.version;
+        if (msg.workspaces) workspaces = msg.workspaces;
       }
     });
   });
@@ -101,7 +103,7 @@
   <!-- ── Tab Content ─────────────────────────────────────────── -->
   <div class="flex-1 overflow-auto" style="animation: var(--animate-fade-in)">
     {#if activeTab === "kanban"}
-      <KanbanTab {board} />
+      <KanbanTab {board} {workspaces} />
     {:else if activeTab === "docs"}
       <DocsTab {docs} />
     {:else if activeTab === "skills"}

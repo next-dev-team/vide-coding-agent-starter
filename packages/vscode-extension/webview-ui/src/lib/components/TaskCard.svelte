@@ -20,12 +20,12 @@
     if (onviewdetail) {
       onviewdetail(task);
     } else {
-      vscode.postMessage({ type: "openFile", filename: task.filename });
+      vscode.postMessage({ type: "openFile", filename: task.filename, projectRoot: task.projectRoot });
     }
   }
 
   function moveTask(status: string) {
-    vscode.postMessage({ type: "moveTask", taskId: task.id, newStatus: status });
+    vscode.postMessage({ type: "moveTask", taskId: task.id, newStatus: status, projectRoot: task.projectRoot });
   }
 </script>
 
@@ -33,7 +33,12 @@
 <div class="task-card" onclick={open} role="button" tabindex="0">
   <div class="task-top">
     <span class="task-id">#{task.id}</span>
-    <Badge tone={task.status}>{task.status}</Badge>
+    <div class="task-top-right">
+      {#if task.projectName}
+        <span class="project-badge">{task.projectName}</span>
+      {/if}
+      <Badge tone={task.status}>{task.status}</Badge>
+    </div>
   </div>
   <div class="task-title">{title}</div>
   {#if total > 0}
@@ -94,6 +99,26 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+  }
+
+  .task-top-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .project-badge {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+    color: var(--color-primary);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    max-width: 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .task-id {
