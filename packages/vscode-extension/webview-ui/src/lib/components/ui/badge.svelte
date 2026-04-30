@@ -11,6 +11,7 @@
         verified: "bg-[var(--color-status-verified)]/15 text-[var(--color-status-verified)]",
         done: "bg-[var(--color-status-done)]/15 text-[var(--color-status-done)]",
         blocked: "bg-[var(--color-status-blocked)]/15 text-[var(--color-status-blocked)]",
+        achieved: "bg-[var(--color-status-achieved)]/15 text-[var(--color-status-achieved)]",
       },
     },
     defaultVariants: { tone: "default" },

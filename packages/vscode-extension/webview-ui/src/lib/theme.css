@@ -41,6 +41,7 @@
   --color-status-verified: var(--vscode-charts-purple, #b180d7);
   --color-status-done: var(--vscode-charts-green, #89d185);
   --color-status-blocked: var(--vscode-charts-red, #f14c4c);
+  --color-status-achieved: var(--vscode-charts-orange, #d18616);
 
   --radius: 0.5rem;
   --font-sans: var(--vscode-font-family, system-ui, sans-serif);
@@ -113,6 +114,7 @@ body {
 .status-glow-verified { box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-status-verified) 20%, transparent); }
 .status-glow-done { box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-status-done) 20%, transparent); }
 .status-glow-blocked { box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-status-blocked) 20%, transparent); }
+.status-glow-achieved { box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-status-achieved) 20%, transparent); }
 
 /* Hide scrollbar utility */
 .no-scrollbar::-webkit-scrollbar { display: none; }

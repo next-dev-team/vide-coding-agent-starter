@@ -911,9 +911,9 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
 
 // ── Board merger ──────────────────────────────────────────────────────────────
 
-const STATUS_ORDER = ["todo", "wip", "verified", "done", "blocked"] as const;
+const STATUS_ORDER = ["todo", "wip", "verified", "done", "achieved", "blocked"] as const;
 const COLUMN_LABELS: Record<string, string> = {
-  todo: "TODO", wip: "WIP", verified: "VERIFIED", done: "DONE", blocked: "BLOCKED",
+  todo: "TODO", wip: "WIP", verified: "VERIFIED", done: "DONE", achieved: "ACHIEVED", blocked: "BLOCKED",
 };
 
 function _mergeBoards(

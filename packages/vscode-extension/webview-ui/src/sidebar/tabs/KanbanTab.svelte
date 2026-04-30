@@ -51,7 +51,7 @@
   const vscode = getVsCode<{ open: Record<TaskStatus, boolean> }>();
   const persisted = vscode.getState();
   let open = $state<Record<TaskStatus, boolean>>(
-    persisted?.open ?? { todo: true, wip: true, verified: false, done: false, blocked: false },
+    persisted?.open ?? { todo: true, wip: true, verified: false, done: false, blocked: false, achieved: false },
   );
 
   let selectedTask = $state<Task | null>(null);
@@ -80,6 +80,7 @@
     verified: "◉",
     done: "●",
     blocked: "✕",
+    achieved: "★",
   };
 </script>
 
@@ -209,6 +210,7 @@
   .status-dot-verified { color: var(--color-status-verified); }
   .status-dot-done { color: var(--color-status-done); }
   .status-dot-blocked { color: var(--color-status-blocked); }
+  .status-dot-achieved { color: var(--color-status-achieved); }
 
   .column-title {
     font-size: 11px;

@@ -4,7 +4,7 @@
  * so the webview bundle stays free of node-only deps.
  */
 
-export type TaskStatus = "todo" | "wip" | "verified" | "done" | "blocked";
+export type TaskStatus = "todo" | "wip" | "verified" | "done" | "blocked" | "achieved";
 
 export interface AcceptanceItem {
   text: string;

@@ -91,7 +91,7 @@ export function registerTools() {
     {
       name: "task_move",
       description:
-        "Move a task to a new status by renaming its file prefix (e.g. todo → wip → done).",
+        "Move a task to a new status by renaming its file prefix (e.g. todo → wip → done → achieved). 'achieved' marks a task as a recognized achievement (manually applied via this tool).",
       inputSchema: {
         type: "object" as const,
         properties: {
@@ -99,7 +99,7 @@ export function registerTools() {
           task_id: { type: "string", description: "Task ID, e.g. '0001' or '0002a'" },
           new_status: {
             type: "string",
-            enum: ["todo", "wip", "verified", "done", "blocked"],
+            enum: ["todo", "wip", "verified", "done", "blocked", "achieved"],
             description: "Target status",
           },
         },

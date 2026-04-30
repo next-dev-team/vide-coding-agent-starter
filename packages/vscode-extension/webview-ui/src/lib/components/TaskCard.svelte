@@ -68,6 +68,10 @@
     {/if}
     {#if task.status === "done"}
       <button type="button" class="action-btn" onclick={(e) => { e.stopPropagation(); vscode.postMessage({ type: "compoundLearnings", taskId: task.id }); }} title="Compound Learnings">🧠</button>
+      <button type="button" class="action-btn" onclick={(e) => { e.stopPropagation(); moveTask("achieved"); }} title="Mark Achieved">🏆</button>
+    {/if}
+    {#if task.status === "achieved"}
+      <button type="button" class="action-btn" onclick={(e) => { e.stopPropagation(); moveTask("done"); }} title="Revert to Done">↺</button>
     {/if}
   </div>
 </div>
@@ -161,6 +165,7 @@
   .progress-fill-verified { background: var(--color-status-verified); }
   .progress-fill-done { background: var(--color-status-done); }
   .progress-fill-blocked { background: var(--color-status-blocked); }
+  .progress-fill-achieved { background: var(--color-status-achieved); }
 
   .progress-label {
     font-size: 10px;

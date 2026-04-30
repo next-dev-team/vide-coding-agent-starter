@@ -32,7 +32,7 @@ export class StatusBarManager implements vscode.Disposable {
     try {
       const board = await scanBoard(this.workspaceRoot);
       const counts = board.columns
-        .filter((c) => c.status !== "done")
+        .filter((c) => c.status !== "done" && c.status !== "achieved")
         .map((c) => {
           const icon =
             c.status === "todo" ? "📋" :

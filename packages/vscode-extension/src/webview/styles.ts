@@ -153,10 +153,12 @@ export const styles = /*css*/ `
     letter-spacing: 0.6px;
   }
   .section-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .section[data-status="todo"]    .section-dot { background: var(--vscode-charts-blue); }
-  .section[data-status="wip"]     .section-dot { background: var(--vscode-charts-yellow); }
-  .section[data-status="done"]    .section-dot { background: var(--vscode-charts-green); }
-  .section[data-status="blocked"] .section-dot { background: var(--vscode-charts-red); }
+  .section[data-status="todo"]     .section-dot { background: var(--vscode-charts-blue); }
+  .section[data-status="wip"]      .section-dot { background: var(--vscode-charts-yellow); }
+  .section[data-status="verified"] .section-dot { background: var(--vscode-charts-purple); }
+  .section[data-status="done"]     .section-dot { background: var(--vscode-charts-green); }
+  .section[data-status="achieved"] .section-dot { background: var(--vscode-charts-orange, #d18616); }
+  .section[data-status="blocked"]  .section-dot { background: var(--vscode-charts-red); }
   .section-meta { display: flex; align-items: center; gap: 8px; }
   .badge {
     font-size: 10px;
@@ -202,10 +204,12 @@ export const styles = /*css*/ `
     border-bottom-color: var(--vscode-focusBorder);
     background: var(--vscode-list-hoverBackground);
   }
-  .card[data-status="todo"]    { border-left-color: var(--vscode-charts-blue); }
-  .card[data-status="wip"]     { border-left-color: var(--vscode-charts-yellow); }
-  .card[data-status="done"]    { border-left-color: var(--vscode-charts-green); }
-  .card[data-status="blocked"] { border-left-color: var(--vscode-charts-red); }
+  .card[data-status="todo"]     { border-left-color: var(--vscode-charts-blue); }
+  .card[data-status="wip"]      { border-left-color: var(--vscode-charts-yellow); }
+  .card[data-status="verified"] { border-left-color: var(--vscode-charts-purple); }
+  .card[data-status="done"]     { border-left-color: var(--vscode-charts-green); }
+  .card[data-status="achieved"] { border-left-color: var(--vscode-charts-orange, #d18616); }
+  .card[data-status="blocked"]  { border-left-color: var(--vscode-charts-red); }
   .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
   .card-id {
     font-size: 10px; font-weight: 600; opacity: 0.6;

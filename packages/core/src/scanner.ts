@@ -112,7 +112,7 @@ export async function scanTasks(projectPath: string): Promise<Task[]> {
 export async function scanBoard(projectPath: string): Promise<Board> {
   const tasks = await scanTasks(projectPath);
 
-  const statusOrder: TaskStatus[] = ["todo", "wip", "verified", "done", "blocked"];
+  const statusOrder: TaskStatus[] = ["todo", "wip", "verified", "done", "achieved", "blocked"];
   const columns: BoardColumn[] = statusOrder.map((status) => ({
     status,
     label: status.toUpperCase(),
@@ -188,7 +188,7 @@ export async function nextId(
   for (const file of allFiles) {
     const cleaned =
       docType === "task"
-        ? file.replace(/^(todo|wip|verified|done|blocked)-/, "")
+        ? file.replace(/^(todo|wip|verified|done|blocked|achieved)-/, "")
         : file;
     const numMatch = cleaned.match(/^(\d+)/);
     if (numMatch) {

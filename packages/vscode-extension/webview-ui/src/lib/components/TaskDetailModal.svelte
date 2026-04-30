@@ -23,6 +23,7 @@
     verified: "Verified",
     done: "Done",
     blocked: "Blocked",
+    achieved: "Achieved",
   };
 
   const STATUS_ICONS: Record<TaskStatus, string> = {
@@ -31,6 +32,7 @@
     verified: "◉",
     done: "●",
     blocked: "✕",
+    achieved: "★",
   };
 
   const STATUS_TRANSITIONS: Record<TaskStatus, { label: string; target: TaskStatus; icon: string }[]> = {
@@ -48,11 +50,15 @@
       { label: "Revert to WIP", target: "wip", icon: "←" },
     ],
     done: [
+      { label: "Mark Achieved", target: "achieved", icon: "🏆" },
       { label: "Reopen", target: "todo", icon: "↺" },
     ],
     blocked: [
       { label: "Unblock → Todo", target: "todo", icon: "↺" },
       { label: "Unblock → WIP", target: "wip", icon: "▶" },
+    ],
+    achieved: [
+      { label: "Revert to Done", target: "done", icon: "←" },
     ],
   };
 

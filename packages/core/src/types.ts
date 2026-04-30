@@ -1,7 +1,13 @@
 // ─── Task Status ───────────────────────────────────────────────
 
-/** The four valid task statuses, encoded as filename prefixes. */
-export type TaskStatus = "todo" | "wip" | "done" | "verified" | "blocked";
+/** The valid task statuses, encoded as filename prefixes. */
+export type TaskStatus =
+  | "todo"
+  | "wip"
+  | "done"
+  | "verified"
+  | "blocked"
+  | "achieved";
 
 /** All valid status prefixes in order. */
 export const TASK_STATUSES: readonly TaskStatus[] = [
@@ -10,6 +16,7 @@ export const TASK_STATUSES: readonly TaskStatus[] = [
   "done",
   "verified",
   "blocked",
+  "achieved",
 ] as const;
 
 // ─── Acceptance Criterion ──────────────────────────────────────
