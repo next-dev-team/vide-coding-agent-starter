@@ -6,19 +6,57 @@
   import TaskCreateModal from "$lib/components/TaskCreateModal.svelte";
   import Badge from "$lib/components/ui/badge.svelte";
   import Button from "$lib/components/ui/button.svelte";
+  import McpQuickCopy from "$lib/components/McpQuickCopy.svelte";
 
   let { board, workspaces = [] } = $props<{ board: Board; workspaces?: WorkspaceInfo[] }>();
 
-  // Active workspace filter — empty set means "show all"
-  // Initialize from the active flags sent by the extension
+  type KanbanViewState = {
+    open?: Record<TaskStatus, boolean>;
+    selectedWorkspacePaths?: string[];
+  };
+
+  const vscode = getVsCode<KanbanViewState>();
+  const persisted = vscode.getState();
+
+  /** Active workspace filter — empty set means "show all". */
+  function pathsFromWorkspaces(ws: WorkspaceInfo[]): Set<string> {
+    if (ws.length === 0) return new Set();
+    if (ws.every(w => w.active !== false)) return new Set();
+    return new Set(ws.filter(w => w.active).map(w => w.path));
+  }
+
+  function pathsEqual(a: Set<string>, b: Set<string>): boolean {
+    if (a.size !== b.size) return false;
+    for (const p of a) if (!b.has(p)) return false;
+    return true;
+  }
+
+  function persistSelection(paths: Set<string>) {
+    vscode.setState({
+      ...vscode.getState(),
+      selectedWorkspacePaths: paths.size === 0 ? undefined : [...paths],
+    });
+  }
+
+  // Restore from webview state first; extension syncs via workspaces $effect below.
   let selectedPaths = $state<Set<string>>(
-    workspaces.every(w => w.active !== false)
-      ? new Set()
-      : new Set(workspaces.filter(w => w.active).map(w => w.path)),
+    persisted?.selectedWorkspacePaths?.length
+      ? new Set(persisted.selectedWorkspacePaths)
+      : new Set(),
   );
+
+  $effect(() => {
+    if (workspaces.length === 0) return;
+    const fromHost = pathsFromWorkspaces(workspaces);
+    if (!pathsEqual(selectedPaths, fromHost)) {
+      selectedPaths = fromHost;
+      persistSelection(fromHost);
+    }
+  });
 
   function selectAll() {
     selectedPaths = new Set();
+    persistSelection(new Set());
     vscode.postMessage({ type: "setActiveWorkspaces", paths: workspaces.map(w => w.path) });
   }
 
@@ -32,9 +70,11 @@
     // Empty selection → treat as "all"
     if (next.size === 0) {
       selectedPaths = new Set();
+      persistSelection(new Set());
       vscode.postMessage({ type: "setActiveWorkspaces", paths: workspaces.map(w => w.path) });
     } else {
       selectedPaths = next;
+      persistSelection(next);
       vscode.postMessage({ type: "setActiveWorkspaces", paths: Array.from(next) });
     }
   }
@@ -48,8 +88,13 @@
         }))
   );
 
-  const vscode = getVsCode<{ open: Record<TaskStatus, boolean> }>();
-  const persisted = vscode.getState();
+  /** Workspace folder names for MCP copy hints (empty when All is selected). */
+  const selectedProjectNames = $derived(
+    selectedPaths.size === 0
+      ? []
+      : workspaces.filter((w) => selectedPaths.has(w.path)).map((w) => w.name),
+  );
+
   let open = $state<Record<TaskStatus, boolean>>(
     persisted?.open ?? { todo: true, wip: true, verified: false, done: false, blocked: false, achieved: false },
   );
@@ -59,7 +104,7 @@
 
   function toggle(status: TaskStatus) {
     open[status] = !open[status];
-    vscode.setState({ open });
+    vscode.setState({ ...vscode.getState(), open });
   }
 
   function createTask() {
@@ -106,6 +151,8 @@
       {/each}
     </div>
   {/if}
+
+  <McpQuickCopy projectNames={selectedProjectNames} />
 
   <!-- Columns -->
   {#each filteredColumns as column (column.status)}

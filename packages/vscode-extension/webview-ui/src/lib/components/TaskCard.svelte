@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Task } from "$lib/types";
   import { getVsCode } from "$lib/vscode";
+  import { buildKanbanTaskRef } from "$lib/kanban-ref";
   import Badge from "$lib/components/ui/badge.svelte";
 
   interface Props {
@@ -15,6 +16,10 @@
   const checked = $derived(task.acceptance.filter((a) => a.checked).length);
   const pct = $derived(total > 0 ? Math.round((checked / total) * 100) : 0);
   const title = $derived(task.goal || task.slug.replace(/-/g, " "));
+  const kanbanRef = $derived(buildKanbanTaskRef(task));
+
+  let copied = $state(false);
+  let copyTimer: ReturnType<typeof setTimeout> | undefined;
 
   function open() {
     if (onviewdetail) {
@@ -27,12 +32,31 @@
   function moveTask(status: string) {
     vscode.postMessage({ type: "moveTask", taskId: task.id, newStatus: status, projectRoot: task.projectRoot });
   }
+
+  function copyRef(e: MouseEvent) {
+    e.stopPropagation();
+    void navigator.clipboard.writeText(kanbanRef).then(() => {
+      copied = true;
+      clearTimeout(copyTimer);
+      copyTimer = setTimeout(() => {
+        copied = false;
+      }, 1200);
+    });
+  }
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 <div class="task-card" onclick={open} role="button" tabindex="0">
   <div class="task-top">
-    <span class="task-id">#{task.id}</span>
+    <button
+      type="button"
+      class="task-id"
+      class:task-id-copied={copied}
+      onclick={copyRef}
+      title="Copy {kanbanRef}"
+    >
+      {copied ? "✓" : `#${task.id}`}
+    </button>
     <div class="task-top-right">
       {#if task.projectName}
         <span class="project-badge">{task.projectName}</span>
@@ -129,6 +153,20 @@
     font-size: 10px;
     font-family: var(--vscode-editor-font-family, monospace);
     color: var(--color-muted-foreground);
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: color 0.12s ease, background 0.12s ease;
+  }
+  .task-id:hover {
+    color: var(--color-foreground);
+    background: color-mix(in srgb, var(--color-muted) 50%, transparent);
+  }
+  .task-id-copied {
+    color: var(--color-primary);
+    font-weight: 600;
   }
 
   .task-title {

@@ -17,6 +17,7 @@ interface DocEntry {
   title: string;
   status?: string;
   summary?: string;
+  projectRoot?: string;
 }
 
 interface DocsData {
@@ -126,23 +127,30 @@ export class DocsPanel {
         await this.refresh();
         break;
       case "openPrd":
-        await this.openIn(join(this.workspaceRoot, "docs", "prd"), msg.filename as string);
+        await this.openIn(
+          join((msg.projectRoot as string) || this.workspaceRoot, "docs", "prd"),
+          msg.filename as string,
+        );
         break;
       case "openAdr":
-        await this.openIn(join(this.workspaceRoot, "docs", "decisions"), msg.filename as string);
+        await this.openIn(
+          join((msg.projectRoot as string) || this.workspaceRoot, "docs", "decisions"),
+          msg.filename as string,
+        );
         break;
       case "openTestCase":
         await this.openIn(
-          join(this.workspaceRoot, "docs", "test-cases"),
+          join((msg.projectRoot as string) || this.workspaceRoot, "docs", "test-cases"),
           msg.filename as string,
         );
         break;
       case "openFile": {
         const filename = msg.filename as string;
+        const root = (msg.projectRoot as string) || this.workspaceRoot;
         const isDone = filename.startsWith("done-");
         const dir = isDone
-          ? join(this.workspaceRoot, "docs", "tasks", "done")
-          : join(this.workspaceRoot, "docs", "tasks");
+          ? join(root, "docs", "tasks", "done")
+          : join(root, "docs", "tasks");
         await this.openIn(dir, filename);
         break;
       }

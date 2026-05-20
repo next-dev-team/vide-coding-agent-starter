@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { existsSync } from "node:fs";
 import {
   scanBoard,
@@ -61,7 +61,20 @@ export class BoardPanel {
 
   async refresh() {
     const board = await scanBoard(this.workspaceRoot);
-    void this.panel.webview.postMessage({ type: "boardUpdated", board } satisfies HostMsg);
+    const projectName = basename(this.workspaceRoot);
+    const enriched = {
+      ...board,
+      columns: board.columns.map((col) => ({
+        ...col,
+        tasks: col.tasks.map((task) => ({
+          ...task,
+          projectRoot: this.workspaceRoot,
+          projectName,
+          acceptance: task.acceptance.map((a) => ({ text: a.text, checked: a.checked })),
+        })),
+      })),
+    };
+    void this.panel.webview.postMessage({ type: "boardUpdated", board: enriched } satisfies HostMsg);
   }
 
   private async init() {

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Task, TaskStatus } from "$lib/types";
   import { getVsCode } from "$lib/vscode";
+  import { buildKanbanTaskRef } from "$lib/kanban-ref";
   import Badge from "$lib/components/ui/badge.svelte";
   import Button from "$lib/components/ui/button.svelte";
 
@@ -16,6 +17,20 @@
   const checked = $derived(task.acceptance.filter((a) => a.checked).length);
   const pct = $derived(total > 0 ? Math.round((checked / total) * 100) : 0);
   const title = $derived(task.goal || task.slug.replace(/-/g, " "));
+  const kanbanRef = $derived(buildKanbanTaskRef(task));
+
+  let copiedRef = $state(false);
+  let copyTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function copyRef() {
+    void navigator.clipboard.writeText(kanbanRef).then(() => {
+      copiedRef = true;
+      clearTimeout(copyTimer);
+      copyTimer = setTimeout(() => {
+        copiedRef = false;
+      }, 1200);
+    });
+  }
 
   const STATUS_LABELS: Record<TaskStatus, string> = {
     todo: "To Do",
@@ -121,6 +136,7 @@
         {/if}
       </div>
       <div class="header-right">
+        <button class="icon-btn" onclick={copyRef} title="Copy {kanbanRef}">{copiedRef ? "✓" : "📋"}</button>
         <button class="icon-btn" onclick={openFile} title="Open in editor">📝</button>
         <button class="icon-btn close-btn" onclick={onclose} title="Close">✕</button>
       </div>

@@ -60,9 +60,9 @@ export type OutboundMessage =
   | { type: "startFeatureLoop"; taskId: string; projectRoot?: string }
   | { type: "startFeatureLoopAll" }
   | { type: "syncAll" }
-  | { type: "openPrd"; filename: string }
-  | { type: "openAdr"; filename: string }
-  | { type: "openTestCase"; filename: string }
+  | { type: "openPrd"; filename: string; projectRoot?: string }
+  | { type: "openAdr"; filename: string; projectRoot?: string }
+  | { type: "openTestCase"; filename: string; projectRoot?: string }
   | { type: "tickAcceptance"; taskId: string; index: number; projectRoot?: string }
   | { type: "untickAcceptance"; taskId: string; index: number; projectRoot?: string };
 
@@ -71,6 +71,8 @@ export interface DocEntry {
   title: string;
   status?: string;
   summary?: string;
+  /** Absolute path to the workspace folder that owns this doc. */
+  projectRoot?: string;
 }
 
 export interface DocsData {

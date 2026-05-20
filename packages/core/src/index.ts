@@ -54,6 +54,17 @@ export {
   resolveTaskDir,
 } from "./scanner.js";
 
+export {
+  listWorkspaceProjects,
+} from "./workspace-projects.js";
+
+export type {
+  WorkspaceProjectEntry,
+  WorkspaceProjectKind,
+  WorkspaceProjectList,
+  ListWorkspaceProjectsOptions,
+} from "./workspace-projects.js";
+
 // ─── Memory Engine ─────────────────────────────────────────────
 export type {
   MemoryCategory,

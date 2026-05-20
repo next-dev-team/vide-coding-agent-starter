@@ -21,10 +21,11 @@
     vscode.setState({ ...vscode.getState(), activeDocSub: sub });
   }
 
-  function openDoc(type: "prd" | "adr" | "task", filename: string) {
+  function openDoc(type: "prd" | "adr" | "task", doc: { filename: string; projectRoot?: string }) {
     vscode.postMessage({
       type: type === "prd" ? "openPrd" : type === "adr" ? "openAdr" : "openFile",
-      filename,
+      filename: doc.filename,
+      projectRoot: doc.projectRoot,
     });
   }
 
@@ -55,7 +56,7 @@
   <div class="doc-list" style="animation: var(--animate-fade-in)">
     {#if activeSub === "prd"}
       {#each docs.prds as doc}
-        <button class="doc-card" onclick={() => openDoc("prd", doc.filename)}>
+        <button class="doc-card" onclick={() => openDoc("prd", doc)}>
           <div class="doc-icon-col">📝</div>
           <div class="doc-body">
             <span class="doc-title">{doc.title}</span>
@@ -76,7 +77,7 @@
       {/each}
     {:else if activeSub === "adr"}
       {#each docs.adrs as doc}
-        <button class="doc-card" onclick={() => openDoc("adr", doc.filename)}>
+        <button class="doc-card" onclick={() => openDoc("adr", doc)}>
           <div class="doc-icon-col">📐</div>
           <div class="doc-body">
             <span class="doc-title">{doc.title}</span>
@@ -91,7 +92,7 @@
       {/each}
     {:else}
       {#each docs.tasks as doc}
-        <button class="doc-card" onclick={() => openDoc("task", doc.filename)}>
+        <button class="doc-card" onclick={() => openDoc("task", doc)}>
           <div class="doc-icon-col">✅</div>
           <div class="doc-body">
             <span class="doc-title">{doc.title}</span>

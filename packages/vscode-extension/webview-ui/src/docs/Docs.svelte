@@ -47,12 +47,14 @@
   }
 
   function open(entry: DocEntry) {
-    if (activeTab === "prds") vscode.postMessage({ type: "openPrd", filename: entry.filename });
+    if (activeTab === "prds")
+      vscode.postMessage({ type: "openPrd", filename: entry.filename, projectRoot: entry.projectRoot });
     else if (activeTab === "adrs")
-      vscode.postMessage({ type: "openAdr", filename: entry.filename });
+      vscode.postMessage({ type: "openAdr", filename: entry.filename, projectRoot: entry.projectRoot });
     else if (activeTab === "testCases")
-      vscode.postMessage({ type: "openTestCase", filename: entry.filename });
-    else vscode.postMessage({ type: "openFile", filename: entry.filename });
+      vscode.postMessage({ type: "openTestCase", filename: entry.filename, projectRoot: entry.projectRoot });
+    else
+      vscode.postMessage({ type: "openFile", filename: entry.filename, projectRoot: entry.projectRoot });
   }
 
   onMount(() => {

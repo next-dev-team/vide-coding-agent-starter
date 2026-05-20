@@ -1,12 +1,13 @@
 import * as vscode from "vscode";
 import { scanBoard, scanPrds, scanAdrs, scanTasks, moveTask, resolveTaskDir, createMemoryBackend, writeTask, nextId, taskFilename } from "@agent-kanban/core";
-import type { TaskStatus, MemoryCategory, Board as CoreBoard } from "@agent-kanban/core";
+import type { TaskStatus, MemoryCategory, Board as CoreBoard, Prd, Adr, Task } from "@agent-kanban/core";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { existsSync } from "node:fs";
 import { rm, readdir, readFile, writeFile, mkdir, copyFile } from "node:fs/promises";
 import { join, relative, basename, extname, dirname } from "node:path";
 import { renderSvelteHtml, svelteResourceRoots } from "./svelte-host.js";
+import { sameWorkspacePath } from "./workspace-paths.js";
 
 export interface WorkspaceEntry { name: string; path: string; }
 
@@ -375,7 +376,7 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
         if (!paths?.length || !this.onSwitchWorkspaces) break;
         const allFolders = vscode.workspace.workspaceFolders ?? [];
         const newRoots = allFolders
-          .filter(f => paths.includes(f.uri.fsPath))
+          .filter(f => paths.some(p => sameWorkspacePath(p, f.uri.fsPath)))
           .map(f => ({ name: f.name, path: f.uri.fsPath }));
         if (newRoots.length > 0) {
           await this.onSwitchWorkspaces(newRoots);
@@ -605,7 +606,8 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
       case "openPrd": {
         const filename = msg.filename as string;
         if (!filename) break;
-        const prdDir = join(this.primaryRoot, "docs", "prd");
+        const root = (msg.projectRoot as string) || this.primaryRoot;
+        const prdDir = join(root, "docs", "prd");
         const uri = vscode.Uri.file(join(prdDir, filename));
         const doc = await vscode.workspace.openTextDocument(uri);
         await vscode.window.showTextDocument(doc);
@@ -614,7 +616,8 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
       case "openAdr": {
         const filename = msg.filename as string;
         if (!filename) break;
-        const adrDir = join(this.primaryRoot, "docs", "decisions");
+        const root = (msg.projectRoot as string) || this.primaryRoot;
+        const adrDir = join(root, "docs", "decisions");
         const uri = vscode.Uri.file(join(adrDir, filename));
         const doc = await vscode.workspace.openTextDocument(uri);
         await vscode.window.showTextDocument(doc);
@@ -829,27 +832,24 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
   private async _updateWebview() {
     if (!this._view) return;
     try {
-      const multiRoot = this.workspaceRoots.length > 1;
-
       // Aggregate boards from all active roots
       const boardResults = await Promise.allSettled(
         this.workspaceRoots.map(entry => scanBoard(entry.path).then(b => ({ board: b, entry }))),
       );
-      const board = _mergeBoards(boardResults, multiRoot);
+      const board = _mergeBoards(boardResults);
 
-      // Docs, skills, knowledge from primary root only
-      const [prds, adrs, tasks] = await Promise.all([
-        scanPrds(this.primaryRoot),
-        scanAdrs(this.primaryRoot),
-        scanTasks(this.primaryRoot),
-      ]);
-      const docs = { prds, adrs, tasks };
+      // Docs from all active workspace roots (boards are already merged above)
+      const docs = await _scanDocsForRoots(this.workspaceRoots);
       const skills = this._skills;
       const knowledge = await this._scanKnowledge();
       const allFolders = vscode.workspace.workspaceFolders ?? [];
-      const activePaths = new Set(this.workspaceRoots.map(r => r.path));
+      const activeRoots = this.workspaceRoots;
       const workspaces = allFolders.length > 1
-        ? allFolders.map(f => ({ name: f.name, path: f.uri.fsPath, active: activePaths.has(f.uri.fsPath) }))
+        ? allFolders.map(f => ({
+            name: f.name,
+            path: f.uri.fsPath,
+            active: activeRoots.some(r => sameWorkspacePath(r.path, f.uri.fsPath)),
+          }))
         : [];
 
       void this._view.webview.postMessage({
@@ -909,6 +909,78 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
   }
 }
 
+// ── Docs scanner ──────────────────────────────────────────────────────────────
+
+interface DocEntry {
+  filename: string;
+  title: string;
+  status?: string;
+  summary?: string;
+  projectRoot?: string;
+}
+
+interface DocsPayload {
+  prds: DocEntry[];
+  adrs: DocEntry[];
+  tasks: DocEntry[];
+}
+
+/** Scan PRDs, ADRs, and task docs from every active workspace root. */
+async function _scanDocsForRoots(roots: WorkspaceEntry[]): Promise<DocsPayload> {
+  const multiRoot = roots.length > 1;
+  const prds: DocEntry[] = [];
+  const adrs: DocEntry[] = [];
+  const tasks: DocEntry[] = [];
+
+  await Promise.all(
+    roots.map(async (entry) => {
+      const [rootPrds, rootAdrs, rootTasks] = await Promise.all([
+        scanPrds(entry.path),
+        scanAdrs(entry.path),
+        scanTasks(entry.path),
+      ]);
+      const prefix = multiRoot ? `[${entry.name}] ` : "";
+      prds.push(...rootPrds.map((p) => _toPrdEntry(p, entry.path, prefix)));
+      adrs.push(...rootAdrs.map((a) => _toAdrEntry(a, entry.path, prefix)));
+      tasks.push(...rootTasks.map((t) => _toTaskDocEntry(t, entry.path, prefix)));
+    }),
+  );
+
+  prds.sort((a, b) => a.filename.localeCompare(b.filename));
+  adrs.sort((a, b) => a.filename.localeCompare(b.filename));
+  tasks.sort((a, b) => a.filename.localeCompare(b.filename));
+
+  return { prds, adrs, tasks };
+}
+
+function _toPrdEntry(p: Prd, projectRoot: string, prefix: string): DocEntry {
+  return {
+    filename: p.filename,
+    title: prefix + (p.title || p.slug.replace(/-/g, " ")),
+    status: p.status,
+    summary: p.problem.split("\n").find((l) => l.trim()) ?? "",
+    projectRoot,
+  };
+}
+
+function _toAdrEntry(a: Adr, projectRoot: string, prefix: string): DocEntry {
+  return {
+    filename: a.filename,
+    title: prefix + `ADR-${a.id}: ${a.slug.replace(/-/g, " ")}`,
+    status: a.status,
+    projectRoot,
+  };
+}
+
+function _toTaskDocEntry(t: Task, projectRoot: string, prefix: string): DocEntry {
+  return {
+    filename: t.filename,
+    title: prefix + (t.goal || t.slug.replace(/-/g, " ")),
+    status: t.status,
+    projectRoot,
+  };
+}
+
 // ── Board merger ──────────────────────────────────────────────────────────────
 
 const STATUS_ORDER = ["todo", "wip", "verified", "done", "achieved", "blocked"] as const;
@@ -918,7 +990,6 @@ const COLUMN_LABELS: Record<string, string> = {
 
 function _mergeBoards(
   results: PromiseSettledResult<{ board: CoreBoard; entry: WorkspaceEntry }>[],
-  multiRoot: boolean,
 ): { totalTasks: number; columns: Array<{ status: string; label: string; tasks: unknown[] }> } {
   const columnMap = new Map<string, unknown[]>();
   for (const s of STATUS_ORDER) columnMap.set(s, []);
@@ -933,7 +1004,7 @@ function _mergeBoards(
           ...task,
           acceptance: task.acceptance.map(a => ({ text: a.text, checked: a.checked })),
           projectRoot: entry.path,
-          projectName: multiRoot ? entry.name : undefined,
+          projectName: entry.name,
         });
       }
       columnMap.set(col.status, bucket);

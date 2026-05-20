@@ -221,4 +221,18 @@ describe("scanPrds", () => {
     const prds = await scanPrds(TMP);
     expect(prds).toHaveLength(1);
   });
+
+  it("returns empty for a root without docs/prd/", async () => {
+    const withPrds = join(TMP, "with-prds");
+    const withoutPrds = join(TMP, "without-prds");
+    await mkdir(join(withPrds, "docs", "prd"), { recursive: true });
+    await mkdir(withoutPrds, { recursive: true });
+    await writeFile(
+      join(withPrds, "docs", "prd", "0001-feature.md"),
+      writePrd({ id: "0001", title: "Feature", problem: "P" }),
+    );
+
+    expect(await scanPrds(withoutPrds)).toHaveLength(0);
+    expect(await scanPrds(withPrds)).toHaveLength(1);
+  });
 });

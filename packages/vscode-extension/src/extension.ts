@@ -8,6 +8,7 @@ import { scanBoard, nextId, writeTask, taskFilename, writePrd, prdFilename } fro
 import { writeFile, readFile, mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { existsSync } from "node:fs";
+import { sameWorkspacePath, storedPathsMatchFolders } from "./workspace-paths.js";
 
 function debounce(fn: () => void, ms: number): () => void {
   let timer: ReturnType<typeof setTimeout>;
@@ -27,10 +28,11 @@ export async function activate(context: vscode.ExtensionContext) {
     activeRoots = [{ name: folders[0].name, path: folders[0].uri.fsPath }];
   } else {
     const stored = context.workspaceState.get<string[]>("agentKanban.activeProjectRoots");
-    if (stored && stored.length > 0 && stored.every(p => folders.some(f => f.uri.fsPath === p))) {
+    const folderPaths = folders.map(f => f.uri.fsPath);
+    if (stored && storedPathsMatchFolders(stored, folderPaths)) {
       activeRoots = stored.map(p => {
-        const f = folders.find(f => f.uri.fsPath === p)!;
-        return { name: f.name, path: p };
+        const f = folders.find(f => sameWorkspacePath(f.uri.fsPath, p))!;
+        return { name: f.name, path: f.uri.fsPath };
       });
     } else {
       // Default: all workspace folders
@@ -146,11 +148,10 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage("Only one workspace folder is open.");
         return;
       }
-      const activePathSet = new Set(activeRoots.map(r => r.path));
       const items = current.map(f => ({
         label: f.name,
         description: f.uri.fsPath,
-        picked: activePathSet.has(f.uri.fsPath),
+        picked: activeRoots.some(r => sameWorkspacePath(r.path, f.uri.fsPath)),
         folder: f,
       }));
       const picked = await vscode.window.showQuickPick(items, {
@@ -290,8 +291,9 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
       const updated = vscode.workspace.workspaceFolders;
       if (!updated || updated.length === 0) return;
-      const updatedPaths = new Set(updated.map(f => f.uri.fsPath));
-      const stillValid = activeRoots.filter(r => updatedPaths.has(r.path));
+      const stillValid = activeRoots.filter(r =>
+        updated.some(f => sameWorkspacePath(r.path, f.uri.fsPath)),
+      );
       if (stillValid.length === 0) {
         void switchProjects([{ name: updated[0].name, path: updated[0].uri.fsPath }]);
         vscode.window.showInformationMessage(`Agent Kanban: Switched to "${updated[0].name}"`);

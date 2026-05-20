@@ -45,6 +45,7 @@ import { driftCheckTool, handleDriftCheck } from "./drift-check.js";
 import { hooksListTool, hooksInitTool, handleHooksList, handleHooksInit, getTransitionHookContent } from "./hooks.js";
 import { docsSyncTool, handleDocsSync } from "./docs-sync.js";
 import { projectSyncAllTool, handleProjectSyncAll } from "./project-sync.js";
+import { projectListTool, handleProjectList } from "./project-list.js";
 
 /** Resolve project path — defaults to cwd. */
 function resolveProjectPath(args: Record<string, unknown>): string {
@@ -222,6 +223,7 @@ export function registerTools() {
     hooksInitTool,
     docsSyncTool,
     projectSyncAllTool,
+    projectListTool,
   ];
 }
 
@@ -493,6 +495,11 @@ export async function handleToolCall(
 
       case "project_sync_all": {
         result = await handleProjectSyncAll(args);
+        break;
+      }
+
+      case "project_list": {
+        result = await handleProjectList(args);
         break;
       }
 

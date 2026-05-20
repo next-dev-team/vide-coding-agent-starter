@@ -297,6 +297,17 @@ describe("adr_create", () => {
   });
 });
 
+// ─── project_list ────────────────────────────────────────────────────────────
+
+describe("project_list", () => {
+  it("returns root project with Kanban flag", async () => {
+    const result = await call("project_list", { project_path: TMP });
+    const list = json(result);
+    expect(list.rootPath).toBe(TMP);
+    expect(list.projects.some((p: { kind: string; hasKanban: boolean }) => p.kind === "root" && p.hasKanban)).toBe(true);
+  });
+});
+
 // ─── memory_brain_sync ───────────────────────────────────────────────────────
 
 describe("memory_brain_sync", () => {
