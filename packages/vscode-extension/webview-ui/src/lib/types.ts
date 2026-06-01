@@ -43,6 +43,8 @@ export interface Column {
 export interface Board {
   totalTasks: number;
   columns: Column[];
+  /** Primary workspace folder name — copy fallback when a task lacks project fields. */
+  workspaceName?: string;
 }
 
 /** Messages: webview → host */
@@ -93,6 +95,14 @@ export interface SkillInfo {
 
 /** Messages: host → webview */
 export type InboundMessage =
-  | { type: "boardUpdated"; board: Board; docs?: DocsData; skills?: SkillInfo[]; workspaces?: WorkspaceInfo[] }
+  | {
+      type: "boardUpdated";
+      board: Board;
+      docs?: DocsData;
+      skills?: SkillInfo[];
+      workspaces?: WorkspaceInfo[];
+      /** Primary project name for kanban copy when viewing a single root. */
+      workspaceName?: string;
+    }
   | { type: "docsUpdated"; docs: DocsData }
   | { type: "error"; message: string };

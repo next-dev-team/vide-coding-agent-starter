@@ -3,6 +3,7 @@ import type { Board } from "$lib/types";
 /** Static fixture used for `vite preview` and the host-less Hello-World load. */
 export const demoBoard: Board = {
   totalTasks: 5,
+  workspaceName: "agent-kanban-demo",
   columns: [
     {
       status: "todo",
@@ -13,6 +14,7 @@ export const demoBoard: Board = {
           slug: "port-kanban-to-svelte",
           filename: "docs/tasks/todo-0015-port-kanban-to-svelte.md",
           status: "todo",
+          projectName: "agent-kanban-demo",
           goal: "Port the Kanban tab to the new Svelte webview-ui",
           acceptance: [
             { text: "Wide board renders in editor area", checked: false },

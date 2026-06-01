@@ -1,20 +1,25 @@
 import type { Task } from "$lib/types";
+import {
+  buildKanbanTaskRef as buildRef,
+  buildKanbanTaskRefFull as buildRefFull,
+  projectNameFromRoot,
+  type BuildKanbanTaskRefOptions,
+} from "@agent-kanban/core/kanban-ref";
 
-/** Derive a display name from an absolute project root path. */
-export function projectNameFromRoot(projectRoot?: string): string | undefined {
-  if (!projectRoot) return undefined;
-  const normalized = projectRoot.replace(/\\/g, "/").replace(/\/+$/, "");
-  const segment = normalized.split("/").pop();
-  return segment || undefined;
+export { projectNameFromRoot, type BuildKanbanTaskRefOptions };
+
+/** Full kanban ticket reference for agent chat (includes project when known). */
+export function buildKanbanTaskRef(
+  task: Task,
+  options?: BuildKanbanTaskRefOptions,
+): string {
+  return buildRef(task, options);
 }
 
-/**
- * Full kanban ticket reference for agent chat, e.g.
- * `kanban vide-coding-agent-starter : #0000`
- */
-export function buildKanbanTaskRef(task: Task): string {
-  const project = task.projectName ?? projectNameFromRoot(task.projectRoot);
-  const id = task.id.startsWith("#") ? task.id : `#${task.id}`;
-  if (project) return `kanban ${project} : ${id}`;
-  return `kanban : ${id}`;
+/** Richer reference: project, id, status, and goal for paste into agent chat. */
+export function buildKanbanTaskRefFull(
+  task: Task,
+  options?: BuildKanbanTaskRefOptions,
+): string {
+  return buildRefFull(task, options);
 }

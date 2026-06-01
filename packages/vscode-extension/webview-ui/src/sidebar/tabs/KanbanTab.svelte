@@ -95,6 +95,14 @@
       : workspaces.filter((w) => selectedPaths.has(w.path)).map((w) => w.name),
   );
 
+  /** Project name included when copying a task ref (kanban my-app : #0000 …). */
+  const copyProjectName = $derived.by(() => {
+    if (selectedProjectNames.length === 1) return selectedProjectNames[0];
+    if (board.workspaceName) return board.workspaceName;
+    if (workspaces.length === 1) return workspaces[0].name;
+    return undefined;
+  });
+
   let open = $state<Record<TaskStatus, boolean>>(
     persisted?.open ?? { todo: true, wip: true, verified: false, done: false, blocked: false, achieved: false },
   );
@@ -171,7 +179,7 @@
       {#if isOpen}
         <div class="column-body" style="animation: var(--animate-fade-in)">
           {#each column.tasks as task (task.id)}
-            <TaskCard {task} onviewdetail={openDetail} />
+            <TaskCard {task} {copyProjectName} onviewdetail={openDetail} />
           {:else}
             <div class="empty-col">
               <span class="empty-icon">{STATUS_ICONS[column.status]}</span>
@@ -186,7 +194,7 @@
 
 <!-- Task Detail Modal (Jira-style) -->
 {#if selectedTask}
-  <TaskDetailModal task={selectedTask} onclose={closeDetail} />
+  <TaskDetailModal task={selectedTask} {copyProjectName} onclose={closeDetail} />
 {/if}
 
 <!-- Task Create Modal -->

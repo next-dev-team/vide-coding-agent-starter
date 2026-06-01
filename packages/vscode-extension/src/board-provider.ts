@@ -836,14 +836,18 @@ export class BoardViewProvider implements vscode.WebviewViewProvider {
       const boardResults = await Promise.allSettled(
         this.workspaceRoots.map(entry => scanBoard(entry.path).then(b => ({ board: b, entry }))),
       );
-      const board = _mergeBoards(boardResults);
+      const activeRoots = this.workspaceRoots;
+      const board = {
+        ..._mergeBoards(boardResults),
+        workspaceName:
+          activeRoots.length === 1 ? activeRoots[0].name : undefined,
+      };
 
       // Docs from all active workspace roots (boards are already merged above)
       const docs = await _scanDocsForRoots(this.workspaceRoots);
       const skills = this._skills;
       const knowledge = await this._scanKnowledge();
       const allFolders = vscode.workspace.workspaceFolders ?? [];
-      const activeRoots = this.workspaceRoots;
       const workspaces = allFolders.length > 1
         ? allFolders.map(f => ({
             name: f.name,

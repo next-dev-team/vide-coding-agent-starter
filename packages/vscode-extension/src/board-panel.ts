@@ -64,6 +64,7 @@ export class BoardPanel {
     const projectName = basename(this.workspaceRoot);
     const enriched = {
       ...board,
+      workspaceName: projectName,
       columns: board.columns.map((col) => ({
         ...col,
         tasks: col.tasks.map((task) => ({

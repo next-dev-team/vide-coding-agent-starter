@@ -1,22 +1,27 @@
 <script lang="ts">
   import type { Task } from "$lib/types";
   import { getVsCode } from "$lib/vscode";
-  import { buildKanbanTaskRef } from "$lib/kanban-ref";
+  import { buildKanbanTaskRefFull } from "$lib/kanban-ref";
   import Badge from "$lib/components/ui/badge.svelte";
 
   interface Props {
     task: Task;
+    /** Workspace / filter project name when the task has no project fields. */
+    copyProjectName?: string;
     onviewdetail?: (task: Task) => void;
   }
 
-  let { task, onviewdetail }: Props = $props();
+  let { task, copyProjectName, onviewdetail }: Props = $props();
   const vscode = getVsCode();
 
   const total = $derived(task.acceptance.length);
   const checked = $derived(task.acceptance.filter((a) => a.checked).length);
   const pct = $derived(total > 0 ? Math.round((checked / total) * 100) : 0);
   const title = $derived(task.goal || task.slug.replace(/-/g, " "));
-  const kanbanRef = $derived(buildKanbanTaskRef(task));
+  const copyOptions = $derived(
+    copyProjectName ? { fallbackProjectName: copyProjectName } : undefined,
+  );
+  const kanbanRef = $derived(buildKanbanTaskRefFull(task, copyOptions));
 
   let copied = $state(false);
   let copyTimer: ReturnType<typeof setTimeout> | undefined;
@@ -53,7 +58,7 @@
       class="task-id"
       class:task-id-copied={copied}
       onclick={copyRef}
-      title="Copy {kanbanRef}"
+      title="Copy full kanban ref: {kanbanRef}"
     >
       {copied ? "✓" : `#${task.id}`}
     </button>

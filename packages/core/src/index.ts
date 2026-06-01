@@ -54,6 +54,13 @@ export {
   resolveTaskDir,
 } from "./scanner.js";
 
+export type { KanbanTaskRefInput, BuildKanbanTaskRefOptions } from "./kanban-ref.js";
+export {
+  projectNameFromRoot,
+  buildKanbanTaskRef,
+  buildKanbanTaskRefFull,
+} from "./kanban-ref.js";
+
 export {
   listWorkspaceProjects,
 } from "./workspace-projects.js";

@@ -9,6 +9,7 @@ export default defineConfig({
   resolve: {
     alias: {
       $lib: resolve(__dirname, "src/lib"),
+      "@agent-kanban/core/kanban-ref": resolve(__dirname, "../../core/src/kanban-ref.ts"),
     },
   },
   root: __dirname,

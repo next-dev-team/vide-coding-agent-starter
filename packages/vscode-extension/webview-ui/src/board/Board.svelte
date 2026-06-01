@@ -93,7 +93,7 @@
         >
           {#each column.tasks as task (task.id)}
             <div animate:flip={{ duration: 200 }}>
-              <TaskCard {task} />
+              <TaskCard {task} copyProjectName={board.workspaceName} />
             </div>
           {:else}
             <div class="rounded border border-dashed border-border/50 px-3 py-6 text-center text-[11px] text-muted-foreground italic">

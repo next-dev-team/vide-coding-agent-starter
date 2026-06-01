@@ -1,23 +1,27 @@
 <script lang="ts">
   import type { Task, TaskStatus } from "$lib/types";
   import { getVsCode } from "$lib/vscode";
-  import { buildKanbanTaskRef } from "$lib/kanban-ref";
+  import { buildKanbanTaskRefFull } from "$lib/kanban-ref";
   import Badge from "$lib/components/ui/badge.svelte";
   import Button from "$lib/components/ui/button.svelte";
 
   interface Props {
     task: Task;
+    copyProjectName?: string;
     onclose: () => void;
   }
 
-  let { task, onclose }: Props = $props();
+  let { task, copyProjectName, onclose }: Props = $props();
   const vscode = getVsCode();
 
   const total = $derived(task.acceptance.length);
   const checked = $derived(task.acceptance.filter((a) => a.checked).length);
   const pct = $derived(total > 0 ? Math.round((checked / total) * 100) : 0);
   const title = $derived(task.goal || task.slug.replace(/-/g, " "));
-  const kanbanRef = $derived(buildKanbanTaskRef(task));
+  const copyOptions = $derived(
+    copyProjectName ? { fallbackProjectName: copyProjectName } : undefined,
+  );
+  const kanbanRef = $derived(buildKanbanTaskRefFull(task, copyOptions));
 
   let copiedRef = $state(false);
   let copyTimer: ReturnType<typeof setTimeout> | undefined;
