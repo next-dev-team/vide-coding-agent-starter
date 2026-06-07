@@ -48,8 +48,8 @@ describe("board_list", () => {
   it("returns board with four columns on empty project", async () => {
     const result = await call("board_list", { project_path: TMP });
     const board = json(result);
-    expect(board.columns).toHaveLength(5);
-    expect(board.columns.map((c: { status: string }) => c.status)).toEqual(["todo", "wip", "verified", "done", "blocked"]);
+    expect(board.columns).toHaveLength(6);
+    expect(board.columns.map((c: { status: string }) => c.status)).toEqual(["todo", "wip", "verified", "done", "achieved", "blocked"]);
     expect(board.totalTasks).toBe(0);
   });
 
